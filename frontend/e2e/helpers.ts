@@ -30,17 +30,9 @@ export async function resetMockData(page: Page) {
  * Hides the mock-mode dev toolbar so the image shows only the product.
  */
 export async function evidence(page: Page, name: string) {
-  await page.addStyleTag({
-    content: "[data-dev-toolbar]{display:none !important}",
-  });
-  // Next's devtools overlay mounts into a CLOSED shadow root on a body-level
-  // div, so neither a stylesheet nor .shadowRoot can reach it. The application
-  // always renders a <main>; anything at body level without one is not ours.
-  await page.evaluate(() => {
-    document.querySelectorAll("body > div").forEach((el) => {
-      if (!el.querySelector("main")) (el as HTMLElement).style.display = "none";
-    });
-  });
+  // Next 16 mounts its dev overlay inside <script data-nextjs-dev-overlay>
+  // containing a <nextjs-portal> custom element. Hide that and our mock toolbar.
+  await page.addStyleTag({ content: "[data-nextjs-dev-overlay], nextjs-portal, [data-dev-toolbar]{display:none !important}" });
   await page.screenshot({ path: `e2e-evidence/${name}.png`, fullPage: true });
 }
 

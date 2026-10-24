@@ -15,6 +15,8 @@ npm install && npm run dev        # http://localhost:3000
 
 Đăng nhập: `admin` / `admin123` · `thungan` / `cashier123` · `thukho` / `stock123`
 
+![Màn hình bán hàng](docs/screenshots/pos-ban-hang.png)
+
 ---
 
 ## Tính năng
@@ -31,6 +33,10 @@ Toàn bộ thao tác chốt đơn chạy trong **một giao dịch**: kiểm t�
 từng dòng → phân bổ giảm giá → ghi hóa đơn → trừ tồn → ghi biến động kho → cộng điểm.
 Thiếu tồn thì báo rõ *"còn 8, đang bán 20"* kèm nút sửa nhanh, và không ghi gì cả.
 
+| Hóa đơn sau thanh toán | Chặn bán vượt tồn |
+|---|---|
+| ![Hóa đơn](docs/screenshots/hoa-don.png) | ![Thiếu tồn](docs/screenshots/pos-thieu-ton.png) |
+
 ### Hàng hóa và tồn kho
 
 Danh mục sản phẩm với SKU, mã vạch, đơn vị tính, giá bán và ngưỡng cảnh báo. Xem tồn hiện
@@ -38,11 +44,17 @@ tại, cảnh báo **sắp hết hàng**, và **kiểm kê** có phát hiện xu
 trong lúc đang đếm, hệ thống từ chối và bắt xác nhận lại thay vì ghi đè. Mọi thay đổi tồn
 đều vào **sổ biến động kho** kèm chứng từ và người thực hiện.
 
+| Cảnh báo sắp hết hàng | Kiểm kê phát hiện xung đột |
+|---|---|
+| ![Tồn kho](docs/screenshots/ton-kho-sap-het.png) | ![Xung đột kiểm kê](docs/screenshots/kiem-ke-xung-dot.png) |
+
 ### Nhập hàng
 
 Lập phiếu nhập theo nhà cung cấp, lưu nháp rồi xác nhận sau. **Chỉ thao tác xác nhận nhận
 hàng mới làm tăng tồn** — đồng thời tính lại **giá vốn bình quân gia quyền**. Phiếu đã nhận
 là bản ghi lịch sử: không sửa, không nhận lại, không xóa.
+
+![Phiếu nhập đã nhận](docs/screenshots/phieu-nhap.png)
 
 ### Khách hàng
 
@@ -55,10 +67,22 @@ Doanh thu theo ngày/tháng, sản phẩm bán chạy, **lợi nhuận gộp** (
 chụp lúc bán), và giá trị tồn kho. Giá vốn được chụp tại thời điểm bán nên đổi giá hôm nay
 không làm sai lệch báo cáo quá khứ.
 
+| Trang chủ theo vai trò | Báo cáo doanh thu |
+|---|---|
+| ![Trang chủ](docs/screenshots/trang-chu.png) | ![Doanh thu](docs/screenshots/bao-cao-doanh-thu.png) |
+
 ### Quản trị
 
 Tạo tài khoản nhân viên, gán vai trò, khóa/mở khóa. Không có xóa cứng ở bất kỳ đâu — mọi
 thứ đều là *ngừng hoạt động* để giữ lịch sử giao dịch.
+
+Giá vốn chỉ hiện với quản lý và nhân viên kho — thu ngân không nhận được trường này từ
+API. Gõ thẳng đường dẫn không có quyền sẽ ra màn hình từ chối, và màn hình đó không gọi
+API nào.
+
+| Danh sách sản phẩm (quản lý) | Chặn truy cập theo vai trò |
+|---|---|
+| ![Sản phẩm](docs/screenshots/san-pham.png) | ![Không có quyền](docs/screenshots/khong-co-quyen.png) |
 
 > Chi tiết từng màn hình, đường dẫn, vai trò truy cập và truy vết tới mã SRS (F1–F10):
 > [`frontend/README.md`](frontend/README.md#tính-năng)
