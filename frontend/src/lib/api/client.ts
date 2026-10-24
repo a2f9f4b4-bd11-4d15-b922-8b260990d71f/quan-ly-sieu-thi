@@ -1,5 +1,5 @@
 import createClient, { type Middleware } from "openapi-fetch";
-import type { paths } from "./types";
+import type { paths, PageMeta, Paged } from "./types";
 import { normalizeError, AppError } from "./errors";
 import {
   getSession,
@@ -70,13 +70,30 @@ const authMiddleware: Middleware = {
 api.use(authMiddleware);
 
 type ApiResult<T> = { data?: { data: T }; error?: unknown; response: Response };
+type ApiListResult<T> = {
+  data?: { data: T[]; meta: PageMeta };
+  error?: unknown;
+  response: Response;
+};
 
-/** Unwraps the `{ data: ... }` envelope, throwing a typed AppError on failure. */
+/** Unwraps a detail envelope `{ ..., data: T }`, throwing a typed AppError on failure. */
 export function unwrap<T>(result: ApiResult<T>): T {
   if (result.error || !result.data) {
     throw normalizeError(result.response?.status ?? 0, result.error);
   }
   return result.data.data;
+}
+
+/**
+ * Unwraps a list envelope. In this contract `meta` is a SIBLING of `data`
+ * (`{ data: T[], meta: {...} }`), not nested inside it — so list responses
+ * cannot go through unwrap().
+ */
+export function unwrapList<T>(result: ApiListResult<T>): Paged<T> {
+  if (result.error || !result.data) {
+    throw normalizeError(result.response?.status ?? 0, result.error);
+  }
+  return { items: result.data.data, meta: result.data.meta };
 }
 
 export async function login(username: string, password: string): Promise<Session> {
