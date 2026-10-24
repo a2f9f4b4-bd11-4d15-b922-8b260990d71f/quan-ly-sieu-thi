@@ -1,12 +1,16 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import { DevToolbar } from "@/mocks/DevToolbar";
 
-// ssr:false keeps MswBootstrap — and therefore msw/browser — out of the
-// server bundle entirely.
-const MswBootstrap = dynamic(() => import("@/mocks/MswBootstrap"), { ssr: false });
-
+/**
+ * The worker itself is started in instrumentation-client.ts, before render.
+ * This only adds the mock-mode dev toolbar.
+ */
 export function MockProvider({ children }: { children: React.ReactNode }) {
-  if (process.env.NEXT_PUBLIC_API_MODE !== "mock") return <>{children}</>;
-  return <MswBootstrap>{children}</MswBootstrap>;
+  return (
+    <>
+      {children}
+      <DevToolbar />
+    </>
+  );
 }
