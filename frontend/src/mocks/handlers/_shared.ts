@@ -1,6 +1,6 @@
 import { HttpResponse, delay } from "msw";
 import type { HttpResponseResolver } from "msw";
-import { db } from "../db";
+import { db, syncFromStorage } from "../db";
 import type { Role } from "@/lib/api/types";
 
 export const BASE = "*/api/v1";
@@ -87,6 +87,8 @@ export function actingUser(request: Request, allowed?: Role[]) {
 /** Wraps a resolver so a thrown HandlerError becomes its response. */
 export function guard(fn: HttpResponseResolver): HttpResponseResolver {
   return async (info) => {
+    // Pick up writes made by other tabs before reading or mutating.
+    syncFromStorage();
     try {
       return await fn(info);
     } catch (e) {

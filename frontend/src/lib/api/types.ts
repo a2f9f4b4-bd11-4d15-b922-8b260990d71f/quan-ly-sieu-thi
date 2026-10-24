@@ -20,6 +20,7 @@ export type PurchaseDetailResponse = Schemas["PurchaseDetailResponse"];
 export type StockItemResponse = Schemas["StockItemResponse"];
 export type StockCountResponse = Schemas["StockCountResponse"];
 export type MovementResponse = Schemas["MovementResponse"];
+export type StockCountResultResponse = Schemas["StockCountResultResponse"];
 export type PageMeta = Schemas["PageMetaDto"];
 
 /** What every list screen consumes: the rows plus their pagination meta. */

@@ -14,3 +14,18 @@ export async function loginAs(page: Page, who: keyof typeof ACCOUNTS) {
   await page.getByRole("button", { name: "Đăng nhập" }).click();
   await page.waitForURL((url) => !url.pathname.startsWith("/login"));
 }
+
+/** Wipes the persisted mock database so each test starts from the seed. */
+export async function resetMockData(page: Page) {
+  await page.goto("/login");
+  await page.evaluate(() => {
+    window.localStorage.removeItem("mini-store.mockdb");
+    window.localStorage.removeItem("mini-store.session");
+  });
+  await page.reload();
+}
+
+/** Captures a screenshot into the evidence folder for Chương IV. */
+export async function evidence(page: Page, name: string) {
+  await page.screenshot({ path: `e2e-evidence/${name}.png`, fullPage: true });
+}

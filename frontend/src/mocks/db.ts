@@ -76,6 +76,25 @@ export function persist(): void {
   }
 }
 
+/**
+ * Re-reads the store from localStorage.
+ *
+ * Each browser tab runs its own JS realm and therefore its own in-memory `db`.
+ * Without this, a sale in one tab is invisible to a stock count open in another,
+ * and genuine cross-terminal conflicts (UC-04 E2) could never occur. Every
+ * mutation persists, so localStorage is the shared source of truth.
+ */
+export function syncFromStorage(): void {
+  if (typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  try {
+    db = JSON.parse(raw) as MockDb;
+  } catch {
+    /* keep the in-memory copy if the stored value is unreadable */
+  }
+}
+
 export function resetDb(): void {
   db = seed();
   persist();

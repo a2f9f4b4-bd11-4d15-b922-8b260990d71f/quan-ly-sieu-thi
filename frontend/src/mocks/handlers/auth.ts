@@ -1,5 +1,5 @@
 import { http } from "msw";
-import { db, persist, type MockUser } from "../db";
+import { db, persist, syncFromStorage, type MockUser } from "../db";
 import { BASE, ok, fail, simulateLatency, actingUser, guard } from "./_shared";
 
 const ACCESS_TTL_MS = 60_000;
@@ -21,6 +21,7 @@ function sessionUser(u: MockUser) {
 export const authHandlers = [
   http.post(`${BASE}/auth/login`, async ({ request }) => {
     await simulateLatency();
+    syncFromStorage();
     const { username, password } = (await request.json()) as { username: string; password: string };
 
     const user = db.users.find((u) => u.username === username.toLowerCase());
@@ -43,6 +44,7 @@ export const authHandlers = [
 
   http.post(`${BASE}/auth/refresh`, async ({ request }) => {
     await simulateLatency();
+    syncFromStorage();
     const { refreshToken } = (await request.json()) as { refreshToken: string };
     const entry = db.tokens[refreshToken];
 

@@ -1,6 +1,8 @@
 import { http } from "msw";
-import { db, paginate, matchesSearch, type MockMovement } from "../db";
-import { BASE, okList, simulateLatency, actingUser, guard } from "./_shared";
+import { db, persist, paginate, matchesSearch, nextId, nextSequence, type MockMovement } from "../db";
+import { BASE, ok, okList, fail, simulateLatency, actingUser, guard } from "./_shared";
+import { nextDocumentNumber } from "../rules";
+import { toStoreDateString } from "@/lib/format/datetime";
 import type { ProductResponse } from "@/lib/api/types";
 
 function toStockItem(p: ProductResponse) {
@@ -83,6 +85,96 @@ export const inventoryHandlers = [
         creator: creator ? { id: creator.id, fullName: creator.fullName } : undefined,
         note: null,
         createdAt: m.createdAt,
+      };
+    });
+    const { items, meta } = paginate(
+      enriched,
+      Number(url.searchParams.get("page") ?? 1),
+      Number(url.searchParams.get("pageSize") ?? 20),
+    );
+    return okList(items, meta);
+  })),
+
+  http.post(`${BASE}/inventory/stock-counts`, guard(async ({ request }) => {
+    await simulateLatency();
+    const user = actingUser(request, ["ADMIN", "STOCKKEEPER"]);
+    const body = (await request.json()) as {
+      productId: number; countedQty: number; reason: string; expectedSystemQty: number;
+    };
+
+    const product = db.products.find((p) => p.id === body.productId);
+    if (!product) return fail(404, "PRODUCT_NOT_FOUND", "Không tìm thấy sản phẩm.");
+
+    if (!Number.isInteger(body.countedQty) || body.countedQty < 0) {
+      return fail(422, "INVALID_QUANTITY", "Số lượng đếm phải là số nguyên không âm.");
+    }
+    if (!body.reason?.trim()) {
+      return fail(400, "VALIDATION_ERROR", "Dữ liệu không hợp lệ.", [
+        { field: "reason", messages: ["Lý do điều chỉnh là bắt buộc."] },
+      ]);
+    }
+
+    // UC-04 E2 — the stock the operator saw must still be the stock on hand.
+    if (product.stockQty !== body.expectedSystemQty) {
+      return fail(409, "STOCK_CONFLICT", "Tồn kho đã thay đổi kể từ khi bạn mở màn hình.", {
+        productId: product.id,
+        expectedSystemQty: body.expectedSystemQty,
+        currentStockQty: product.stockQty,
+      });
+    }
+
+    const now = new Date();
+    const nowIso = now.toISOString();
+    const systemQty = product.stockQty;
+    const difference = body.countedQty - systemQty;
+
+    product.stockQty = body.countedQty;   // BR11 — a count never changes cost price.
+    product.updatedAt = nowIso;
+
+    const count = {
+      id: nextId(db.stockCounts),
+      countNo: nextDocumentNumber("KK", now, nextSequence(`KK-${toStoreDateString(now)}`)),
+      productId: product.id, systemQty, countedQty: body.countedQty, difference,
+      reason: body.reason.trim(), createdBy: user.id, createdAt: nowIso,
+    };
+    db.stockCounts.push(count);
+
+    if (difference !== 0) {
+      db.movements.push({
+        id: nextId(db.movements), productId: product.id, type: "ADJUSTMENT",
+        quantity: difference, referenceType: "STOCK_COUNT", referenceId: count.id,
+        createdBy: user.id, createdAt: nowIso,
+      });
+    }
+
+    persist();
+    return ok({
+      stockCount: {
+        ...count,
+        product: { id: product.id, sku: product.sku, name: product.name, unit: product.unit },
+        creator: { id: user.id, fullName: user.fullName },
+      },
+      product: {
+        id: product.id, sku: product.sku, name: product.name, unit: product.unit,
+        stockQty: product.stockQty, reorderLevel: product.reorderLevel,
+      },
+    }, 201);
+  })),
+
+  http.get(`${BASE}/inventory/stock-counts`, guard(async ({ request }) => {
+    await simulateLatency();
+    actingUser(request, ["ADMIN", "STOCKKEEPER"]);
+    const url = new URL(request.url);
+    const rows = [...db.stockCounts].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const enriched = rows.map((c) => {
+      const product = db.products.find((p) => p.id === c.productId);
+      const creator = db.users.find((u) => u.id === c.createdBy);
+      return {
+        ...c,
+        product: product
+          ? { id: product.id, sku: product.sku, name: product.name, unit: product.unit }
+          : undefined,
+        creator: creator ? { id: creator.id, fullName: creator.fullName } : undefined,
       };
     });
     const { items, meta } = paginate(
