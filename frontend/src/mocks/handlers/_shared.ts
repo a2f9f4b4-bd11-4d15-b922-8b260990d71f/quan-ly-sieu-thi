@@ -34,6 +34,21 @@ export function ok(data: unknown, status = 200, meta?: unknown) {
   );
 }
 
+/** Some endpoints succeed with no `data` field at all (e.g. reset-password). */
+export function okNoData(status = 200) {
+  return HttpResponse.json(
+    {
+      success: true,
+      statusCode: status,
+      code: "OK",
+      message: "Thành công",
+      requestId: `req-${++requestCounter}`,
+      timestamp: new Date().toISOString(),
+    },
+    { status },
+  );
+}
+
 /** List responses put the rows in `data` and pagination in a sibling `meta`. */
 export function okList(items: unknown[], meta: unknown, status = 200) {
   return ok(items, status, meta);

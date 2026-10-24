@@ -96,6 +96,16 @@ export function unwrapList<T>(result: ApiListResult<T>): Paged<T> {
   return { items: result.data.data, meta: result.data.meta };
 }
 
+/**
+ * For endpoints whose success envelope has no `data` field at all
+ * (e.g. POST /users/{id}/reset-password). Throws on failure, returns nothing.
+ */
+export function unwrapVoid(result: { error?: unknown; response: Response }): void {
+  if (result.error) {
+    throw normalizeError(result.response?.status ?? 0, result.error);
+  }
+}
+
 export async function login(username: string, password: string): Promise<Session> {
   const { data, error, response } = await bare.POST("/api/v1/auth/login", {
     body: { username, password } as never,
