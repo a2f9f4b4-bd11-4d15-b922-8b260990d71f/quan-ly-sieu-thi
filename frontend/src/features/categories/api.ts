@@ -13,8 +13,9 @@ export type CategoryListParams = {
   isActive?: boolean;
 };
 
-export function useCategoryList(params: CategoryListParams) {
+export function useCategoryList(params: CategoryListParams, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.categories.list(params),
     queryFn: async () =>
       unwrapList<CategoryResponse>(

@@ -7,17 +7,22 @@ import { DateTime } from "@/components/DateTime";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RequireRole } from "@/lib/auth/RequireRole";
 import { usePurchaseDetail, usePurchaseMutations } from "@/features/purchases/api";
+import { DetailState } from "@/components/DetailState";
 import { AppError } from "@/lib/api/errors";
 
 export default function PurchaseDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const purchaseId = Number(id);
-  const { data: purchase, isLoading } = usePurchaseDetail(purchaseId);
+  const { data: purchase, isLoading, error: loadError } = usePurchaseDetail(purchaseId);
   const { receive, cancel } = usePurchaseMutations();
   const [error, setError] = useState<string | null>(null);
 
-  if (isLoading || !purchase) {
-    return <p className="text-sm text-slate-500">Đang tải phiếu nhập…</p>;
+  if (!purchase) {
+    return (
+      <RequireRole capability="managePurchases">
+        <DetailState isLoading={isLoading} error={loadError} loadingLabel="Đang tải phiếu nhập…" />
+      </RequireRole>
+    );
   }
 
   const isDraft = purchase.status === "DRAFT";

@@ -43,3 +43,15 @@ export async function evidence(page: Page, name: string) {
   });
   await page.screenshot({ path: `e2e-evidence/${name}.png`, fullPage: true });
 }
+
+/**
+ * Records every 403 the page takes. A screen must never issue a request the
+ * current role cannot make — hiding UI is not enough, the query must be gated.
+ */
+export function watchForbidden(page: Page): string[] {
+  const hits: string[] = [];
+  page.on("response", (r) => {
+    if (r.status() === 403) hits.push(`${r.request().method()} ${new URL(r.url()).pathname}`);
+  });
+  return hits;
+}

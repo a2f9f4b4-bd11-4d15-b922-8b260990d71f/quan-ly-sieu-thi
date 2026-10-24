@@ -10,18 +10,24 @@ import { RequireRole } from "@/lib/auth/RequireRole";
 import { useAuth } from "@/lib/auth/context";
 import { can } from "@/lib/auth/permissions";
 import { useSaleDetail } from "@/features/sales/api";
+import { DetailState } from "@/components/DetailState";
 
 export default function SaleDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const saleId = Number(id);
   const { user } = useAuth();
-  const { data: sale, isLoading } = useSaleDetail(saleId);
+  const { data: sale, isLoading, error } = useSaleDetail(saleId);
   const [printing, setPrinting] = useState(false);
 
   const showCost = user ? can(user.role, "viewCostPrice") : false;
 
-  if (isLoading || !sale) {
-    return <p className="text-sm text-slate-500">Đang tải hóa đơn…</p>;
+  if (!sale) {
+    // RequireRole wraps the state so a forbidden URL renders the gate too.
+    return (
+      <RequireRole capability="viewSales">
+        <DetailState isLoading={isLoading} error={error} loadingLabel="Đang tải hóa đơn…" />
+      </RequireRole>
+    );
   }
 
   if (printing) {

@@ -7,6 +7,8 @@ import { useListState } from "@/components/data-table/useListQuery";
 import { ResourceForm } from "@/components/form/ResourceForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { useSupplierList, useSupplierMutations } from "@/features/suppliers/api";
 import type { SupplierResponse } from "@/lib/api/types";
 
@@ -20,7 +22,10 @@ const supplierSchema = z.object({
 
 export default function SuppliersPage() {
   const { search, setSearch, page, setPage, searchParam } = useListState();
-  const query = useSupplierList({ page, search: searchParam });
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "manageSuppliers") : false;
+  const query = useSupplierList({ page, search: searchParam }, { enabled: mayView });
   const { create, setActive } = useSupplierMutations();
   const [adding, setAdding] = useState(false);
 

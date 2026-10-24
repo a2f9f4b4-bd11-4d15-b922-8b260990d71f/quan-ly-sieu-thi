@@ -6,10 +6,12 @@ import { qk } from "@/lib/query/keys";
 import { invalidateFor } from "@/lib/query/invalidation";
 import type { SupplierResponse } from "@/lib/api/types";
 
-export function useSupplierList(params: {
-  page: number; pageSize?: number; search?: string; isActive?: boolean;
-}) {
+export function useSupplierList(
+  params: { page: number; pageSize?: number; search?: string; isActive?: boolean },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.suppliers.list(params),
     queryFn: async () =>
       unwrapList<SupplierResponse>(

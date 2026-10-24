@@ -38,4 +38,8 @@ describe("daysBetween", () => {
   it("returns a negative span when the end precedes the start", () => {
     expect(daysBetween("2026-10-20", "2026-10-18")).toBe(-1);
   });
+
+  it("returns 0 for a one-day inversion — the boundary callers must reject", () => {
+    expect(daysBetween("2026-10-20", "2026-10-19")).toBe(0);
+  });
 });

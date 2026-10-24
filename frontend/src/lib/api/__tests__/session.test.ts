@@ -64,15 +64,16 @@ describe("refreshOnce", () => {
     expect(getSession()?.accessToken).toBe("a3");
   });
 
-  it("clears the session and rethrows when refresh fails, and does not wedge the gate", async () => {
+  it("rethrows on failure without destroying the session, and does not wedge the gate", async () => {
     setSession(session);
-    const failing = vi.fn().mockRejectedValue(new Error("revoked"));
+    const failing = vi.fn().mockRejectedValue(new Error("boom"));
 
-    await expect(refreshOnce(failing)).rejects.toThrow("revoked");
-    expect(getSession()).toBeNull();
+    await expect(refreshOnce(failing)).rejects.toThrow("boom");
+    // Whether the token is actually dead is the caller's judgement: a transient
+    // 500 must not cost the user a valid session.
+    expect(getSession()?.accessToken).toBe("a1");
 
-    // A later login must be able to refresh again — the in-flight promise must be released.
-    setSession(session);
+    // The gate must still be released so a later refresh can run.
     const ok = vi.fn().mockResolvedValue({ accessToken: "a9", refreshToken: "r9", user });
     await refreshOnce(ok);
     expect(getSession()?.accessToken).toBe("a9");

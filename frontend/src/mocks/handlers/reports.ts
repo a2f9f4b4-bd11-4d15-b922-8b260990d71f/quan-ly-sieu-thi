@@ -14,7 +14,9 @@ function readRange(url: URL): { from: string; to: string } | Response {
   }
   const MS = 86_400_000;
   const span = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / MS) + 1;
-  if (span < 0) return fail(400, "INVALID_DATE_RANGE", "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
+  // Inclusive span: a one-day inversion is 0, not negative. Must match
+  // validateRange() exactly so behaviour is identical after integration.
+  if (span < 1) return fail(400, "INVALID_DATE_RANGE", "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
   if (span > MAX_DAYS) return fail(400, "INVALID_DATE_RANGE", `Khoảng thời gian tối đa là ${MAX_DAYS} ngày.`);
   return { from, to };
 }

@@ -11,8 +11,9 @@ import type { CategoryResponse } from "@/lib/api/types";
 
 export default function CategoriesPage() {
   const { user } = useAuth();
+  const mayView = user ? can(user.role, "viewStock") : false;
   const { search, setSearch, page, setPage, searchParam } = useListState();
-  const query = useCategoryList({ page, search: searchParam });
+  const query = useCategoryList({ page, search: searchParam }, { enabled: mayView });
   const { setActive } = useCategoryMutations();
 
   const canEdit = user ? can(user.role, "manageCategories") : false;

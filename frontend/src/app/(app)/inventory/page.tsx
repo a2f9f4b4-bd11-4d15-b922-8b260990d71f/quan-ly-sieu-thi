@@ -17,7 +17,8 @@ export default function InventoryPage() {
 
   const canSeeAlerts = user ? can(user.role, "viewLowStock") : false;
   const allQuery = useStockList({ page, search: searchParam });
-  const lowQuery = useLowStockList({ page, search: searchParam });
+  // Gate the QUERY, not just the tab: viewLowStock is admin/stockkeeper only.
+  const lowQuery = useLowStockList({ page, search: searchParam }, { enabled: canSeeAlerts });
   const query = tab === "low" && canSeeAlerts ? lowQuery : allQuery;
 
   const columns: Column<StockItemResponse & { id: number }>[] = [

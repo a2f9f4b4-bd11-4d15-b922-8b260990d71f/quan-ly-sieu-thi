@@ -6,10 +6,12 @@ import { qk } from "@/lib/query/keys";
 import { invalidateFor } from "@/lib/query/invalidation";
 import type { Role, UserResponse } from "@/lib/api/types";
 
-export function useUserList(params: {
-  page: number; pageSize?: number; search?: string; role?: Role; isActive?: boolean;
-}) {
+export function useUserList(
+  params: { page: number; pageSize?: number; search?: string; role?: Role; isActive?: boolean },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.users.list(params),
     queryFn: async () =>
       unwrapList<UserResponse>(

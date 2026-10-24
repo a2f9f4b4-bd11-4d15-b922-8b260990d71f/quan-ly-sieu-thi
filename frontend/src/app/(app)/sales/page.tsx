@@ -8,6 +8,8 @@ import { DOCUMENT_SEARCH_MAX } from "@/components/data-table/searchInput";
 import { Money } from "@/components/Money";
 import { DateTime } from "@/components/DateTime";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { useSaleList, type SaleListItem } from "@/features/sales/api";
 import { toStoreDateString } from "@/lib/format/datetime";
 import type { PaymentMethod } from "@/lib/api/types";
@@ -23,10 +25,16 @@ export default function SalesPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  const query = useSaleList({
-    page, search: searchParam, paymentMethod: method,
-    from: from || undefined, to: to || undefined,
-  });
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "viewSales") : false;
+  const query = useSaleList(
+    {
+      page, search: searchParam, paymentMethod: method,
+      from: from || undefined, to: to || undefined,
+    },
+    { enabled: mayView },
+  );
 
   const columns: Column<SaleListItem>[] = [
     { key: "invoiceNo", header: "Số hóa đơn",

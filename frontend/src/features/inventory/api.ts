@@ -11,8 +11,9 @@ export type StockListParams = {
   categoryId?: number; lowStock?: boolean; isActive?: boolean;
 };
 
-export function useStockList(params: StockListParams) {
+export function useStockList(params: StockListParams, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.inventory.stock(params),
     queryFn: async () =>
       unwrapList<StockItemResponse>(
@@ -35,10 +36,12 @@ export function useLowStockList(
   });
 }
 
-export function useMovementList(params: {
-  page: number; pageSize?: number; productId?: number; type?: MovementType;
-}) {
+export function useMovementList(
+  params: { page: number; pageSize?: number; productId?: number; type?: MovementType },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.inventory.movements(params),
     queryFn: async () =>
       unwrapList<MovementResponse>(
@@ -47,8 +50,12 @@ export function useMovementList(params: {
   });
 }
 
-export function useStockCountList(params: { page: number; pageSize?: number }) {
+export function useStockCountList(
+  params: { page: number; pageSize?: number },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.inventory.counts(params),
     queryFn: async () =>
       unwrapList<StockCountResponse>(

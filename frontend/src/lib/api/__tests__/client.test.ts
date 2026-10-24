@@ -66,6 +66,61 @@ describe("auth middleware", () => {
     expect(getSession()?.accessToken).toBe("fresh");
   });
 
+  it("replays a request WITH A BODY after refreshing, preserving the payload", async () => {
+    setSession({ accessToken: "stale", refreshToken: "r1", user });
+    let refreshCalls = 0;
+    const saleBodies: unknown[] = [];
+
+    server.use(
+      http.post(`${BASE}/api/v1/auth/refresh`, () => {
+        refreshCalls += 1;
+        return HttpResponse.json({
+          data: { accessToken: "fresh", refreshToken: "r2", user, expiresIn: 900 },
+        });
+      }),
+      http.post(`${BASE}/api/v1/sales`, async ({ request }) => {
+        saleBodies.push(await request.clone().json());
+        if (request.headers.get("authorization") === "Bearer stale") {
+          return HttpResponse.json(
+            { error: { code: "UNAUTHENTICATED", message: "Hết phiên" } },
+            { status: 401 },
+          );
+        }
+        return HttpResponse.json({ data: { id: 1, invoiceNo: "HD202610240001" } }, { status: 201 });
+      }),
+    );
+
+    const payload = {
+      items: [{ productId: 1, quantity: 3 }],
+      payments: [{ method: "CASH", amount: 36000 }],
+    };
+    const result = await api.POST("/api/v1/sales", { body: payload as never });
+
+    // The cashier's sale must actually land, not vanish with the session.
+    expect(refreshCalls).toBe(1);
+    expect(saleBodies).toHaveLength(2);
+    expect(saleBodies[1]).toEqual(payload);
+    expect(result.response.status).toBe(201);
+    expect(getSession()?.accessToken).toBe("fresh");
+  });
+
+  it("keeps the session when the refresh fails for a non-auth reason", async () => {
+    setSession({ accessToken: "stale", refreshToken: "r1", user });
+
+    server.use(
+      // A transient 500 is not a revoked token — the session must survive.
+      http.post(`${BASE}/api/v1/auth/refresh`, () =>
+        HttpResponse.json({ error: { code: "INTERNAL_ERROR", message: "Lỗi máy chủ" } }, { status: 500 }),
+      ),
+      http.get(`${BASE}/api/v1/products`, () =>
+        HttpResponse.json({ error: { code: "UNAUTHENTICATED", message: "Hết phiên" } }, { status: 401 }),
+      ),
+    );
+
+    await api.GET("/api/v1/products", { params: { query: { page: 1, pageSize: 20 } } });
+    expect(getSession()).not.toBeNull();
+  });
+
   it("clears the session when the refresh itself fails", async () => {
     setSession({ accessToken: "stale", refreshToken: "bad", user });
 

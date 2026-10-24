@@ -7,6 +7,8 @@ import { useListState } from "@/components/data-table/useListQuery";
 import { ResourceForm } from "@/components/form/ResourceForm";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { useUserList, useUserMutations } from "@/features/users/api";
 import { AppError, isCode } from "@/lib/api/errors";
 import type { Role, UserResponse } from "@/lib/api/types";
@@ -26,7 +28,10 @@ const userSchema = z.object({
 
 export default function UsersPage() {
   const { search, setSearch, page, setPage, searchParam } = useListState();
-  const query = useUserList({ page, search: searchParam });
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "manageUsers") : false;
+  const query = useUserList({ page, search: searchParam }, { enabled: mayView });
   const { create, setLocked } = useUserMutations();
   const [adding, setAdding] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);

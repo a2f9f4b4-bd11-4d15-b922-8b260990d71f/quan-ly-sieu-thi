@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Money } from "@/components/Money";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { ReportShell } from "@/components/reports/ReportShell";
 import { validateRange } from "@/components/reports/DateRangePicker";
 import { useInventoryReport } from "@/features/reports/api";
@@ -15,9 +17,12 @@ export default function InventoryReportPage() {
   const [range, setRange] = useState({ from: today, to: today });
   const [categoryId, setCategoryId] = useState<number | undefined>();
 
-  const valid = validateRange(range.from, range.to) === null;
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "viewInventoryReport") : false;
+  const valid = validateRange(range.from, range.to) === null && mayView;
   const query = useInventoryReport({ ...range, categoryId, enabled: valid });
-  const categories = useCategoryList({ page: 1, pageSize: 100 });
+  const categories = useCategoryList({ page: 1, pageSize: 100 }, { enabled: mayView });
   const rows = query.data?.products.items ?? [];
 
   return (

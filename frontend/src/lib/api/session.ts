@@ -61,6 +61,10 @@ export function subscribeToSession(fn: (s: Session | null) => void): () => void 
  * The API's refresh token is single-use with reuse detection: two concurrent
  * /auth/refresh calls look like a stolen token and revoke the whole session.
  * Every caller that arrives while a refresh is running awaits the same promise.
+ *
+ * On failure this rethrows and releases the gate but does NOT clear the session:
+ * only the caller can tell a rejected token (session really is gone) from a
+ * transient 500 or network blip (session is still good).
  */
 export function refreshOnce(
   refreshFn: (refreshToken: string) => Promise<Session>,
@@ -78,10 +82,6 @@ export function refreshOnce(
     .then((next) => {
       setSession(next);
       return next;
-    })
-    .catch((error) => {
-      clearSession();
-      throw error;
     })
     .finally(() => {
       // Only release the gate if it is still ours: clearSession() may have

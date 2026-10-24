@@ -4,6 +4,8 @@ import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { Money } from "@/components/Money";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { ReportShell } from "@/components/reports/ReportShell";
 import { validateRange } from "@/components/reports/DateRangePicker";
 import { useGrossProfitReport } from "@/features/reports/api";
@@ -15,7 +17,10 @@ export default function GrossProfitReportPage() {
   const [range, setRange] = useState({ from: today, to: today });
   const [groupBy, setGroupBy] = useState<"day" | "month">("day");
 
-  const valid = validateRange(range.from, range.to) === null;
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "viewRevenueReports") : false;
+  const valid = validateRange(range.from, range.to) === null && mayView;
   const query = useGrossProfitReport({ ...range, groupBy, enabled: valid });
   const rows = query.data?.rows ?? [];
 

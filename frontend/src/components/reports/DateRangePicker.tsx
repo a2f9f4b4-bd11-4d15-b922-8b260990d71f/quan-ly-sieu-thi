@@ -10,8 +10,10 @@ export const MAX_REPORT_DAYS = 366;
  */
 export function validateRange(from: string, to: string): string | null {
   if (!from || !to) return "Vui lòng chọn đầy đủ ngày bắt đầu và ngày kết thúc.";
+  // daysBetween is an INCLUSIVE span: a single valid day is 1, so a one-day
+  // inversion is 0, not negative. Rejecting only `< 0` lets that case through.
   const span = daysBetween(from, to);
-  if (span < 0) return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.";
+  if (span < 1) return "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.";
   if (span > MAX_REPORT_DAYS) return `Khoảng thời gian tối đa là ${MAX_REPORT_DAYS} ngày.`;
   return null;
 }

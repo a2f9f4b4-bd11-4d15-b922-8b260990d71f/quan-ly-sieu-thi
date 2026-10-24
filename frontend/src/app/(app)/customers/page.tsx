@@ -7,6 +7,8 @@ import { useListState } from "@/components/data-table/useListQuery";
 import { ResourceForm } from "@/components/form/ResourceForm";
 import { DateTime } from "@/components/DateTime";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { useCustomerList, useCustomerMutations } from "@/features/customers/api";
 import type { CustomerResponse } from "@/lib/api/types";
 
@@ -22,7 +24,10 @@ const customerSchema = z.object({
 
 export default function CustomersPage() {
   const { search, setSearch, page, setPage, searchParam } = useListState();
-  const query = useCustomerList({ page, search: searchParam });
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "manageCustomers") : false;
+  const query = useCustomerList({ page, search: searchParam }, { enabled: mayView });
   const { create } = useCustomerMutations();
   const [adding, setAdding] = useState(false);
 

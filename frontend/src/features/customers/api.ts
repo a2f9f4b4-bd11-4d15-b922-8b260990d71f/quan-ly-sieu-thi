@@ -6,8 +6,12 @@ import { qk } from "@/lib/query/keys";
 import { invalidateFor } from "@/lib/query/invalidation";
 import type { CustomerResponse } from "@/lib/api/types";
 
-export function useCustomerList(params: { page: number; pageSize?: number; search?: string }) {
+export function useCustomerList(
+  params: { page: number; pageSize?: number; search?: string },
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.customers.list(params),
     queryFn: async () =>
       unwrapList<CustomerResponse>(

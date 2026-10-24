@@ -41,29 +41,61 @@ async function refreshRequest(refreshToken: string): Promise<Session> {
   };
 }
 
+/**
+ * Pristine clones of in-flight requests, keyed by openapi-fetch's request id.
+ *
+ * openapi-fetch hands onResponse the SAME Request object it passed to fetch, so
+ * its body is already consumed by then — `new Request(thatRequest)` throws for
+ * anything with a payload. Without a clone taken before the fetch, a 401 on any
+ * POST/PATCH would burn the rotated refresh token, drop the request, and log the
+ * user out mid-action.
+ */
+const pendingClones = new Map<string, Request>();
+
 const authMiddleware: Middleware = {
-  async onRequest({ request }) {
+  async onRequest({ request, id }) {
     const session = getSession();
     if (session) request.headers.set("Authorization", `Bearer ${session.accessToken}`);
+    // Only bodied requests need the clone; GETs can be rebuilt freely.
+    if (request.body) pendingClones.set(id, request.clone());
     return request;
   },
 
-  async onResponse({ request, response }) {
+  async onResponse({ request, response, id }) {
+    const clone = pendingClones.get(id);
+    pendingClones.delete(id);
+
     if (response.status !== 401) return response;
     // Never try to refresh a refresh.
     if (request.url.includes("/auth/refresh") || request.url.includes("/auth/login")) {
       return response;
     }
 
+    let next: Session;
     try {
-      const next = await refreshOnce(refreshRequest);
-      const replay = new Request(request, { headers: new Headers(request.headers) });
+      next = await refreshOnce(refreshRequest);
+    } catch (error) {
+      // Only a rejected token means the session is gone. A 500, a network blip
+      // or a timeout must leave the session intact so the caller can retry.
+      if (error instanceof AppError && (error.status === 401 || error.status === 403)) {
+        clearSession();
+      }
+      return response;
+    }
+
+    try {
+      const replay = clone ?? new Request(request);
       replay.headers.set("Authorization", `Bearer ${next.accessToken}`);
       return await fetch(replay);
     } catch {
-      clearSession();
+      // The refresh succeeded; surface the original 401 rather than killing a
+      // session we just renewed.
       return response;
     }
+  },
+
+  async onError({ id }) {
+    pendingClones.delete(id);
   },
 };
 

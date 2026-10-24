@@ -5,6 +5,8 @@ import { DataTable, type Column } from "@/components/data-table/DataTable";
 import { useListState } from "@/components/data-table/useListQuery";
 import { DateTime } from "@/components/DateTime";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import {
   useStockList, useStockCountList, useCreateStockCount,
 } from "@/features/inventory/api";
@@ -15,8 +17,10 @@ type Selected = { productId: number; name: string; unit: string; systemQty: numb
 
 export default function StockCountsPage() {
   const { search, setSearch, page, setPage, searchParam } = useListState();
-  const stock = useStockList({ page: 1, pageSize: 50, search: searchParam });
-  const history = useStockCountList({ page });
+  const { user } = useAuth();
+  const mayView = user ? can(user.role, "countStock") : false;
+  const stock = useStockList({ page: 1, pageSize: 50, search: searchParam }, { enabled: mayView });
+  const history = useStockCountList({ page }, { enabled: mayView });
   const createCount = useCreateStockCount();
 
   const [selected, setSelected] = useState<Selected | null>(null);

@@ -14,10 +14,11 @@ import type { ProductResponse } from "@/lib/api/types";
 
 export default function ProductsPage() {
   const { user } = useAuth();
+  const mayView = user ? can(user.role, "viewStock") : false;
   const { search, setSearch, page, setPage, searchParam } = useListState();
   const [categoryId, setCategoryId] = useState<number | undefined>();
-  const query = useProductList({ page, search: searchParam, categoryId });
-  const categories = useCategoryList({ page: 1, pageSize: 100 });
+  const query = useProductList({ page, search: searchParam, categoryId }, { enabled: mayView });
+  const categories = useCategoryList({ page: 1, pageSize: 100 }, { enabled: mayView });
   const { setActive } = useProductMutations();
 
   const showCost = user ? can(user.role, "viewCostPrice") : false;

@@ -10,6 +10,8 @@ import { Money } from "@/components/Money";
 import { DateTime } from "@/components/DateTime";
 import { StatusBadge } from "@/components/StatusBadge";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { usePurchaseList, type PurchaseListItem } from "@/features/purchases/api";
 import type { PurchaseStatus } from "@/lib/api/types";
 
@@ -21,7 +23,10 @@ export default function PurchasesPage() {
   const router = useRouter();
   const { search, setSearch, page, setPage, searchParam } = useListState(DOCUMENT_SEARCH_MAX);
   const [status, setStatus] = useState<PurchaseStatus | undefined>();
-  const query = usePurchaseList({ page, search: searchParam, status });
+  const { user } = useAuth();
+  // Never issue a request this role cannot make, even via a direct URL.
+  const mayView = user ? can(user.role, "managePurchases") : false;
+  const query = usePurchaseList({ page, search: searchParam, status }, { enabled: mayView });
 
   const columns: Column<PurchaseListItem>[] = [
     { key: "purchaseNo", header: "Số phiếu",

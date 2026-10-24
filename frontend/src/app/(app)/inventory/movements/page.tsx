@@ -5,6 +5,8 @@ import { DataTable, type Column } from "@/components/data-table/DataTable";
 import { useListState } from "@/components/data-table/useListQuery";
 import { DateTime } from "@/components/DateTime";
 import { RequireRole } from "@/lib/auth/RequireRole";
+import { useAuth } from "@/lib/auth/context";
+import { can } from "@/lib/auth/permissions";
 import { useMovementList } from "@/features/inventory/api";
 import type { MovementResponse, MovementType } from "@/lib/api/types";
 
@@ -24,7 +26,9 @@ const REFERENCE_LABELS: Record<string, string> = {
 export default function MovementsPage() {
   const { page, setPage, search, setSearch } = useListState();
   const [type, setType] = useState<MovementType | undefined>();
-  const query = useMovementList({ page, type });
+  const { user } = useAuth();
+  const mayView = user ? can(user.role, "viewMovements") : false;
+  const query = useMovementList({ page, type }, { enabled: mayView });
 
   const columns: Column<MovementResponse & { id: number }>[] = [
     { key: "createdAt", header: "Thời điểm", render: (m) => <DateTime value={m.createdAt} /> },

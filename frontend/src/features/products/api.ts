@@ -14,8 +14,9 @@ export type ProductListParams = {
   isActive?: boolean;
 };
 
-export function useProductList(params: ProductListParams) {
+export function useProductList(params: ProductListParams, options: { enabled?: boolean } = {}) {
   return useQuery({
+    enabled: options.enabled ?? true,
     queryKey: qk.products.list(params),
     queryFn: async () =>
       unwrapList<ProductResponse>(

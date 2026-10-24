@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "verify": "tsc --noEmit && vitest run",
-    "test:e2e:report": "playwright test --reporter=html"
+    "test:e2e:report": "playwright test --reporter=html",
+    "dev:live": "NEXT_PUBLIC_API_MODE=live NEXT_PUBLIC_API_BASE_URL=${API_URL:-http://localhost:3001} next dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.0",
