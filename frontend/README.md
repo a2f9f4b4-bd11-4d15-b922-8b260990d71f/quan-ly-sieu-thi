@@ -29,6 +29,86 @@ Góc dưới bên phải có thanh công cụ chỉ hiện ở chế độ mock:
 API kế tiếp thất bại, **Reset dữ liệu demo** đưa dữ liệu về trạng thái gốc. Dữ liệu mock
 lưu ở `localStorage`, dùng chung giữa các tab — nên hai cửa sổ mô phỏng được hai máy bán hàng.
 
+---
+
+## Tính năng
+
+Mã **F1–F10** là mã chức năng trong SRS; cột cuối cho biết phần nào đã làm xong.
+
+### Bán hàng
+
+| Màn hình | Đường dẫn | Vai trò | Nội dung | SRS |
+|----------|-----------|---------|----------|-----|
+| POS bán hàng | `/pos` | Quản lý, Thu ngân | Quét mã vạch/SKU, giỏ hàng, gắn khách, giảm giá theo hạn mức vai trò, thanh toán nhiều phương thức, in hóa đơn | F6 ✅ |
+| Hóa đơn | `/sales` | Quản lý, Thu ngân | Lịch sử, lọc theo số hóa đơn / phương thức / khoảng ngày; mở chi tiết và **in lại** | F6, F10 ✅ |
+| Khách hàng | `/customers` | Quản lý, Thu ngân | Danh sách, tìm theo tên/mã/SĐT, thêm khách, xem điểm tích lũy | F7 ⚠️ *thiếu sửa* |
+
+**Quy trình thanh toán** chạy trong một giao dịch: khóa sản phẩm → kiểm tồn → chụp
+tên/SKU/giá bán/giá vốn từng dòng → phân bổ giảm giá → kiểm tiền → ghi hóa đơn → trừ tồn →
+ghi biến động kho → cộng điểm. Lỗi bất kỳ bước nào thì không ghi gì cả.
+
+### Hàng hóa và tồn kho
+
+| Màn hình | Đường dẫn | Vai trò | Nội dung | SRS |
+|----------|-----------|---------|----------|-----|
+| Sản phẩm | `/products` | Xem: cả 3 · Sửa: Quản lý, Kho | Danh sách, tìm theo tên/SKU/mã vạch, lọc danh mục, ngừng bán / bán lại | F3 ⚠️ *thiếu thêm + sửa* |
+| Danh mục | `/categories` | Xem: cả 3 · Sửa: Quản lý, Kho | Danh sách, ngừng dùng / dùng lại | F3 ⚠️ *thiếu thêm + sửa* |
+| Tồn kho | `/inventory` | Cả 3 (cảnh báo: Quản lý, Kho) | Tồn hiện tại, tab **Sắp hết hàng** theo ngưỡng cảnh báo | F9 ✅ |
+| Kiểm kê | `/inventory/counts` | Quản lý, Kho | Đếm thực tế, bắt buộc nhập lý do, **phát hiện xung đột** khi tồn đã đổi | F9 ✅ |
+| Biến động kho | `/inventory/movements` | Quản lý, Kho | Sổ mọi thay đổi tồn: nhập / bán / điều chỉnh, kèm chứng từ và người thực hiện | F9 ✅ |
+
+### Nhập hàng
+
+| Màn hình | Đường dẫn | Vai trò | Nội dung | SRS |
+|----------|-----------|---------|----------|-----|
+| Phiếu nhập | `/purchases` | Quản lý, Kho | Danh sách, lọc theo trạng thái Nháp / Đã nhận / Đã hủy | F5 ✅ |
+| Tạo phiếu nhập | `/purchases/new` | Quản lý, Kho | Chọn NCC, thêm dòng hàng, lưu nháp hoặc lưu và nhận luôn | F5 ✅ |
+| Chi tiết phiếu | `/purchases/[id]` | Quản lý, Kho | Xác nhận nhận hàng, hủy phiếu nháp | F5 ⚠️ *thiếu sửa nháp* |
+| Nhà cung cấp | `/suppliers` | Quản lý, Kho | Danh sách, tìm kiếm, thêm, ngừng hợp tác | F4 ⚠️ *thiếu sửa* |
+
+**Xác nhận nhận hàng** là thao tác duy nhất làm tăng tồn: chuyển `DRAFT → RECEIVED`, cộng
+tồn, tính lại **giá vốn bình quân gia quyền**, ghi biến động. Phiếu đã nhận không sửa,
+không nhận lại, không xóa.
+
+### Báo cáo
+
+| Màn hình | Đường dẫn | Vai trò | Nội dung | SRS |
+|----------|-----------|---------|----------|-----|
+| Doanh thu | `/reports/revenue` | Quản lý | Theo ngày hoặc tháng: số hóa đơn, tiền hàng, giảm giá, doanh thu thuần | F8 ✅ |
+| Sản phẩm bán chạy | `/reports/top-products` | Quản lý | Xếp hạng theo số lượng hoặc doanh thu | F8 ✅ |
+| Lợi nhuận gộp | `/reports/gross-profit` | Quản lý | Doanh thu trừ giá vốn **chụp lúc bán**, kèm tỷ suất | F8 ✅ |
+| Tồn kho | `/reports/inventory` | Quản lý, Kho | Giá trị tồn, nhập/xuất/điều chỉnh trong kỳ, cảnh báo tồn thấp | F8 ✅ |
+
+Mọi báo cáo bắt buộc cả hai đầu ngày, `đến ngày` tính cả ngày đó, tối đa **366 ngày** —
+kiểm tra ngay ở client nên khoảng sai không gửi request nào.
+
+### Hệ thống
+
+| Màn hình | Đường dẫn | Vai trò | Nội dung | SRS |
+|----------|-----------|---------|----------|-----|
+| Đăng nhập | `/login` | Công khai | Xác thực, điều hướng theo vai trò, từ chối tài khoản bị khóa | F1 ✅ |
+| Trang chủ | `/` | Cả 3 (nội dung khác nhau) | Doanh thu hôm nay, cảnh báo tồn, hóa đơn gần đây, phiếu nháp | F8, F9 ✅ |
+| Nhân viên | `/users` | Quản lý | Thêm tài khoản, gán vai trò, khóa / mở khóa | F2 ⚠️ *thiếu sửa* |
+| Hồ sơ | `/profile` | Cả 3 | Thông tin tài khoản, đăng xuất | F1 ✅ |
+
+**Phân quyền** kiểm tra ở máy chủ; giao diện chỉ ẩn cho gọn. Gõ thẳng đường dẫn không có
+quyền sẽ ra màn hình "Không có quyền truy cập", và màn hình đó **không gọi API** nào.
+
+### Quy tắc nghiệp vụ đã hiện thực
+
+| Mã | Quy tắc | Thấy ở đâu |
+|----|---------|------------|
+| BR1 | Không bán vượt tồn | POS báo "còn N, đang bán M" kèm nút sửa nhanh |
+| BR3 | Chỉ `DRAFT → RECEIVED` mới tăng tồn | Phiếu đã nhận mất hết nút thao tác |
+| BR5 | Chụp giá bán và giá vốn lúc bán | Chi tiết hóa đơn giữ nguyên dù giá sản phẩm đổi |
+| BR6 | 1 điểm / 10.000 đ, làm tròn xuống | Hóa đơn 36.000 đ → 3 điểm |
+| BR7 | Giảm giá: thu ngân 10%, quản lý 100% | Thu ngân vượt mức → báo mức tối đa |
+| BR9 | SKU, mã vạch, SĐT là duy nhất | Lỗi hiện ngay trên đúng trường |
+| BR10 | Ngừng hoạt động thay vì xóa | Không có nút xóa ở bất kỳ đâu |
+| BR11 | Giá vốn bình quân gia quyền khi nhận hàng | Nhận 14 @ 180.000 lên 14 @ 152.000 → 166.000 |
+
+---
+
 ## Lệnh
 
 | Lệnh | Việc |
@@ -39,6 +119,8 @@ lưu ở `localStorage`, dùng chung giữa các tab — nên hai cửa sổ mô
 | `npm run test:e2e` | Playwright, toàn bộ luồng UC-01…UC-05 |
 | `npm run test:e2e:report` | Như trên, kèm báo cáo HTML |
 | `npm run build` | Build production |
+
+Hiện có **153 unit test** và **60 kiểm thử đầu-cuối**.
 
 ## Cấu trúc
 
@@ -72,10 +154,22 @@ Những điểm này đã gây lỗi thật trong quá trình xây dựng:
 6. **Không ghi đè `next.config.ts`** — `cacheComponents` là bắt buộc cho
    `export const instant = false`. Chỉ sửa, đừng viết lại.
 
-## Giới hạn đã biết
+## Chưa làm
 
-- Chưa tích hợp với backend thật (xem `../docs/integration-log.md`).
-- Chưa có form **sửa** cho sản phẩm, danh mục, nhà cung cấp, khách hàng, nhân viên; chưa
-  có form **thêm** cho sản phẩm và danh mục; chưa có nút đặt lại mật khẩu và sửa phiếu nhập nháp.
-  Tầng dữ liệu và mock đã sẵn sàng cho tất cả các thao tác này.
-- Giỏ hàng POS không lưu lại khi đóng tab; giá được máy chủ chốt lúc thanh toán.
+Theo SRS, bốn chức năng còn thiếu phần **sửa**; tầng dữ liệu và mock đã sẵn sàng cho tất cả:
+
+| SRS | Còn thiếu |
+|-----|-----------|
+| F2 | Sửa thông tin nhân viên; nút đặt lại mật khẩu |
+| F3 | **Thêm** và **sửa** sản phẩm, danh mục |
+| F4 | Sửa nhà cung cấp |
+| F7 | Sửa khách hàng |
+| §5.3 | Sửa phiếu nhập còn ở trạng thái nháp |
+
+Ngoài ra:
+
+- Chưa tích hợp với backend thật — xem [`../docs/integration-log.md`](../docs/integration-log.md)
+  để biết 7 sai lệch hợp đồng đã phát hiện và 4 câu hỏi cần backend trả lời.
+- Giỏ hàng POS không lưu lại khi đóng tab; giá do máy chủ chốt lúc thanh toán.
+- Không có hủy/hoàn hóa đơn, không quản lý lô và hạn sử dụng, không bán hàng cân lẻ —
+  đều nằm ngoài phạm vi phiên bản đầu theo SRS.
