@@ -120,8 +120,14 @@ export default function NewPurchasePage() {
           </table>
         </div>
 
-        <button onClick={addLine} className="rounded-md border px-3 py-1.5 text-sm">
-          Thêm dòng hàng
+        {/* addLine() needs a product to default to; without this guard the
+            button silently does nothing while the list is still loading. */}
+        <button
+          onClick={addLine}
+          disabled={!products.data?.items.length}
+          className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-40"
+        >
+          {products.isLoading ? "Đang tải sản phẩm…" : "Thêm dòng hàng"}
         </button>
 
         <label className="block space-y-1">

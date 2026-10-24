@@ -31,11 +31,14 @@ test.describe("UC-05 Xem báo cáo", () => {
     });
 
     await page.goto("/reports/revenue");
-    // Let the initial today..today query settle before counting further calls.
     await expect(page.getByTestId("report-empty")).toBeVisible();
+
+    // Setting `from` alone leaves a still-valid range, which legitimately queries.
+    await page.getByLabel("Từ ngày").fill("2026-10-20");
+    await page.waitForTimeout(500);
     const baseline = reportCalls.length;
 
-    await page.getByLabel("Từ ngày").fill("2026-10-20");
+    // Now make it invalid: this must issue nothing.
     await page.getByLabel("Đến ngày").fill("2026-10-18");
 
     await expect(page.getByTestId("range-error"))

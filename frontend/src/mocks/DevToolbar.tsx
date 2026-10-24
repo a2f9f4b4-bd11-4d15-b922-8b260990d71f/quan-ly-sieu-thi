@@ -14,7 +14,7 @@ export function DevToolbar() {
   if (process.env.NEXT_PUBLIC_API_MODE !== "mock") return null;
 
   return (
-    <div className="fixed bottom-3 right-3 z-50 flex items-center gap-2 rounded-lg border border-slate-300 bg-white/95 px-3 py-2 text-xs shadow-lg">
+    <div data-dev-toolbar className="fixed bottom-3 right-3 z-50 flex items-center gap-2 rounded-lg border border-slate-300 bg-white/95 px-3 py-2 text-xs shadow-lg">
       <span className="font-medium text-slate-500">Mock</span>
       {FAILURES.map((f) => (
         <button
