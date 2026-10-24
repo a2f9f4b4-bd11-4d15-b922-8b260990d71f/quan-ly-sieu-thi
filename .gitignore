@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+.env*.local
+coverage/
+e2e-report/
+e2e-evidence/
+test-results/
+playwright-report/
+.superpowers/
+.DS_Store
