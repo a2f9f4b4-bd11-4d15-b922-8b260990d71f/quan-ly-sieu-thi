@@ -16,11 +16,22 @@ export class AppError extends Error {
 
 const GENERIC_MESSAGE = "Đã xảy ra lỗi. Vui lòng thử lại.";
 
+/**
+ * Reads the contract's ErrorEnvelopeDto, which is FLAT:
+ *   { success: false, statusCode, code, message, data: null, details?, requestId, timestamp }
+ * `success: false` is what marks it an error — a 2xx envelope also carries a
+ * `code` ("OK"), so keying off `code` alone would misread success as failure.
+ */
 function readEnvelope(body: unknown): { code?: string; message?: string; details?: unknown } | null {
   if (typeof body !== "object" || body === null) return null;
-  const error = (body as Record<string, unknown>).error;
-  if (typeof error !== "object" || error === null) return null;
-  return error as { code?: string; message?: string; details?: unknown };
+  const envelope = body as Record<string, unknown>;
+  if (envelope.success !== false) return null;
+  if (typeof envelope.code !== "string") return null;
+  return {
+    code: envelope.code,
+    message: typeof envelope.message === "string" ? envelope.message : undefined,
+    details: envelope.details,
+  };
 }
 
 /**

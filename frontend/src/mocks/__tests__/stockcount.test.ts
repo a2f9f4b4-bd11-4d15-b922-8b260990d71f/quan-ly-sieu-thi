@@ -57,12 +57,10 @@ describe("POST /inventory/stock-counts", () => {
     });
 
     expect(response.status).toBe(409);
-    const body = error as unknown as {
-      error: { code: string; details: { expectedSystemQty: number; currentStockQty: number } };
-    };
-    expect(body.error.code).toBe("STOCK_CONFLICT");
-    expect(body.error.details.expectedSystemQty).toBe(96);
-    expect(body.error.details.currentStockQty).toBe(95);
+    const body = error as unknown as { code: string; details: { expectedSystemQty: number; currentStockQty: number } };
+    expect(body.code).toBe("STOCK_CONFLICT");
+    expect(body.details.expectedSystemQty).toBe(96);
+    expect(body.details.currentStockQty).toBe(95);
     // nothing was adjusted
     expect(db.products.find((p) => p.id === COCA)!.stockQty).toBe(95);
     expect(db.stockCounts).toHaveLength(0);
@@ -88,7 +86,7 @@ describe("POST /inventory/stock-counts", () => {
       productId: COCA, countedQty: 90, reason: "   ", expectedSystemQty: 96,
     });
     expect(response.status).toBe(400);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("VALIDATION_ERROR");
+    expect((error as unknown as { code: string }).code).toBe("VALIDATION_ERROR");
   });
 
   it("rejects a negative count (UC-04 E1)", async () => {

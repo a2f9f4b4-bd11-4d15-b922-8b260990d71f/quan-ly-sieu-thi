@@ -54,8 +54,21 @@ export function okList(items: unknown[], meta: unknown, status = 200) {
   return ok(items, status, meta);
 }
 
+/** The contract's ErrorEnvelopeDto — flat, not nested under `error`. */
 export function fail(status: number, code: string, message: string, details?: unknown) {
-  return HttpResponse.json({ error: { code, message, details } }, { status });
+  return HttpResponse.json(
+    {
+      success: false,
+      statusCode: status,
+      code,
+      message,
+      data: null,
+      ...(details === undefined ? {} : { details }),
+      requestId: `req-${++requestCounter}`,
+      timestamp: new Date().toISOString(),
+    },
+    { status },
+  );
 }
 
 export class HandlerError extends Error {

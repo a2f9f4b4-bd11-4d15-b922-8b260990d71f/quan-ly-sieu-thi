@@ -59,6 +59,15 @@ Tất cả đã được sửa ở phía frontend. Cần **xác nhận lại v�
 | 5 | Biến động kho | `type`, `quantity` | `movementType`, `quantityChange`, kèm `product`/`creator` lồng nhau | `src/features/inventory/api.ts` |
 | 6 | Dòng hóa đơn in | `skuSnapshot`, `nameSnapshot`, có `id` | `sku`, `name`, **không có `id`**; `payments` cũng không có `id` | `src/components/pos/ReceiptDialog.tsx` |
 | 7 | Tạo phiếu kiểm kê | trả thẳng bản ghi kiểm kê | `StockCountResultResponse` = `{ stockCount, product }` | `src/features/inventory/api.ts` |
+| 8 | **Phong bì lỗi** | `{ error: { code, message, details } }` | **`ErrorEnvelopeDto` phẳng**: `{ success:false, statusCode, code, message, data:null, details, requestId, timestamp }` | `readEnvelope()` trong `src/lib/api/errors.ts` và `fail()` trong `src/mocks/handlers/_shared.ts` |
+
+> **Mục 8 là lỗi nghiêm trọng, chỉ lộ ra khi gọi API thật.** Frontend tự nghĩ ra lớp
+> lồng `error`; mock cũng phát ra đúng hình dạng sai đó, nên 153 unit test và 61 e2e
+> test đều mã hóa cái sai. Hậu quả: **mọi** mã lỗi từ backend đều rơi về
+> `INTERNAL_ERROR` kèm thông báo chung — mất toàn bộ giao diện riêng cho
+> `INSUFFICIENT_STOCK`, `INVALID_DISCOUNT`, `STOCK_CONFLICT`, `INVALID_PAYMENT`,
+> `FORBIDDEN`, `VALIDATION_ERROR` và mọi `details` đi kèm. Slice 1 và 2 không phát
+> hiện được vì chúng không chạm vào đường xử lý lỗi. Đã sửa cả frontend lẫn mock.
 
 ---
 
@@ -137,9 +146,29 @@ trong lúc kiểm thử; chờ hết 60 giây là bình thường trở lại.
 | Chặn quyền bằng URL | `/reports/revenue`, `/users`, `/suppliers` → màn hình từ chối, **0 lần 403** |
 
 ### Slice 3 — `POST /sales`
-- [ ] Chưa chạy. **Slice quan trọng nhất**: chỉ slice này mới phát hiện được sai lệch
-      *ngữ nghĩa* mà mock không thể bắt — làm tròn, phân bổ giảm giá, quy tắc
-      tích điểm, định dạng số chứng từ.
+- [x] **Đạt, sau khi sửa một lỗi nghiêm trọng ở frontend** (xem mục 2, dòng 8).
+
+Số liệu quan sát thực tế (sản phẩm `DU-006`, đơn giá 10.000 đ, SL 3, giảm 997 đ):
+
+| Quy tắc | Kỳ vọng | Thực tế |
+|---|---|---|
+| Tạm tính / phải trả | 30.000 / 29.003 | **khớp** |
+| Số hóa đơn | `HD` + ngày giờ cửa hàng + 4 số | `HD202610280015` |
+| BR6 tích điểm | `floor(29003/10000)` = 2 | **2** |
+| BR7 phân bổ giảm giá | tổng các dòng = 997 | **997** |
+| BR5 chụp dữ liệu | SKU, tên, giá vốn | **đủ cả ba** |
+| Tồn kho sau bán | 41 → 38 | **khớp** |
+| Điểm khách sau bán | 2 → 4 | **khớp** |
+| BR1 bán vượt tồn | 409 + chi tiết từng sản phẩm, không ghi gì | `INSUFFICIENT_STOCK`, `requested:88 available:38`, tồn không đổi |
+| Thanh toán không khớp | 422 | `INVALID_PAYMENT` |
+| BR7 trần giảm giá thu ngân | 422 + mức tối đa | `INVALID_DISCOUNT`, `maxDiscountPercent:10, maxDiscountAmount:1000` |
+| Cùng mức giảm với quản lý | Chấp nhận | 201 |
+| In lại 3 lần | Tồn không đổi | 36 → 36 |
+
+**Giới hạn của lần kiểm tra này**: chạy lúc 20:09 giờ VN, khi ngày giờ cửa hàng và
+ngày UTC trùng nhau (`20261028`), nên số hóa đơn **chưa phân biệt được** hai cách
+tính. Chỉ kiểm tra trong khoảng 00:00–07:00 giờ VN mới kết luận được.
+Đồng hồ host và MySQL khớp nhau (cùng 13:09 UTC, `@@global.time_zone = +00:00`).
 
 ### Slice 4 — phiếu nhập, kiểm kê, báo cáo
 - [ ] Chưa chạy.

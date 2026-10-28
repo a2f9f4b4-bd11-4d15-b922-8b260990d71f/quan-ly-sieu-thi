@@ -62,7 +62,7 @@ describe("POST /purchases/{id}/receive", () => {
 
     const { response, error } = await receive(DRAFT_ID);
     expect(response.status).toBe(409);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("PURCHASE_ALREADY_RECEIVED");
+    expect((error as unknown as { code: string }).code).toBe("PURCHASE_ALREADY_RECEIVED");
     expect(db.products.find((p) => p.id === GAO)!.stockQty).toBe(after);
   });
 
@@ -72,7 +72,7 @@ describe("POST /purchases/{id}/receive", () => {
 
     const { response, error } = await receive(DRAFT_ID);
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("SUPPLIER_INACTIVE");
+    expect((error as unknown as { code: string }).code).toBe("SUPPLIER_INACTIVE");
   });
 
   it("refuses to receive a draft whose product was deactivated (UC-03 E1)", async () => {
@@ -81,7 +81,7 @@ describe("POST /purchases/{id}/receive", () => {
 
     const { response, error } = await receive(DRAFT_ID);
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("PRODUCT_UNAVAILABLE");
+    expect((error as unknown as { code: string }).code).toBe("PRODUCT_UNAVAILABLE");
   });
 
   it("cancels a draft without touching stock, and refuses to cancel twice", async () => {
@@ -111,7 +111,7 @@ describe("POST /purchases/{id}/receive", () => {
       body: { supplierId: 1, items: [{ productId: GAO, quantity: 0, unitCost: 1000 }] } as never,
     });
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("INVALID_QUANTITY");
+    expect((error as unknown as { code: string }).code).toBe("INVALID_QUANTITY");
   });
 
   it("rejects a negative unit cost (UC-03 E2)", async () => {
@@ -120,7 +120,7 @@ describe("POST /purchases/{id}/receive", () => {
       body: { supplierId: 1, items: [{ productId: GAO, quantity: 1, unitCost: -5 }] } as never,
     });
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("INVALID_PURCHASE_LINE");
+    expect((error as unknown as { code: string }).code).toBe("INVALID_PURCHASE_LINE");
   });
 
   it("replaces the whole line list on PATCH rather than merging", async () => {

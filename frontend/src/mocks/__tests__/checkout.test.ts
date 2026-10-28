@@ -99,7 +99,7 @@ describe("POST /sales — the checkout transaction", () => {
     });
 
     expect(response.status).toBe(409);
-    const details = (error as unknown as { error: { details: Array<{ available: number; requested: number }> } }).error.details;
+    const details = (error as unknown as { details: Array<{ available: number; requested: number }> }).details;
     expect(details[0]).toMatchObject({ requested: 20, available: 8 });
     expect(db.products.find((p) => p.id === PEPSI)!.stockQty).toBe(before);
     expect(db.sales).toHaveLength(0);
@@ -114,9 +114,9 @@ describe("POST /sales — the checkout transaction", () => {
     });
 
     expect(response.status).toBe(422);
-    const body = error as unknown as { error: { code: string; details: { maxDiscountAmount: number } } };
-    expect(body.error.code).toBe("INVALID_DISCOUNT");
-    expect(body.error.details.maxDiscountAmount).toBe(1200);
+    const body = error as unknown as { code: string; details: { maxDiscountAmount: number } };
+    expect(body.code).toBe("INVALID_DISCOUNT");
+    expect(body.details.maxDiscountAmount).toBe(1200);
   });
 
   it("allows an admin the same discount a cashier is refused", async () => {
@@ -138,7 +138,7 @@ describe("POST /sales — the checkout transaction", () => {
       payments: [{ method: "CASH", amount: 10000 }],
     });
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("INVALID_PAYMENT");
+    expect((error as unknown as { code: string }).code).toBe("INVALID_PAYMENT");
   });
 
   it("accepts a split payment that sums to the total", async () => {
@@ -190,7 +190,7 @@ describe("POST /sales — the checkout transaction", () => {
       payments: [{ method: "CASH", amount: 12000 }],
     });
     expect(response.status).toBe(422);
-    expect((error as unknown as { error: { code: string } }).error.code).toBe("PRODUCT_UNAVAILABLE");
+    expect((error as unknown as { code: string }).code).toBe("PRODUCT_UNAVAILABLE");
   });
 
   it("reprints without creating a second invoice (UC-02 E7)", async () => {
