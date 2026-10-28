@@ -36,7 +36,7 @@ Sinh lại kiểu dữ liệu trước khi chạy:
 
 ```bash
 cd /home/karpy/Lab/m1
-npx openapi-typescript http://<backend-host>:<port>/api/v1/openapi.json -o api-types.ts
+npx openapi-typescript http://<backend-host>:<port>/api/docs-json -o api-types.ts
 cd frontend && npm run verify
 ```
 
