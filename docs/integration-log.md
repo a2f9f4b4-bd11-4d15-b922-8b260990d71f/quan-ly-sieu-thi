@@ -171,4 +171,19 @@ tính. Chỉ kiểm tra trong khoảng 00:00–07:00 giờ VN mới kết luận
 Đồng hồ host và MySQL khớp nhau (cùng 13:09 UTC, `@@global.time_zone = +00:00`).
 
 ### Slice 4 — phiếu nhập, kiểm kê, báo cáo
-- [ ] Chưa chạy.
+- [x] **Đạt.** Không phát hiện sai lệch ngữ nghĩa.
+
+| Quy tắc | Kỳ vọng | Thực tế |
+|---|---|---|
+| BR11 giá vốn bình quân gia quyền | `(46×8643,59 + 10×12965)/56` = **9415,27** | **9415,27** (khớp tới 2 chữ số thập phân) |
+| Tồn sau nhận hàng | 46 → 56 | **khớp** |
+| BR3 nhận hàng lần hai | Từ chối, tồn không đổi | `409 PURCHASE_ALREADY_RECEIVED` |
+| UC-04 E2 kiểm kê lệch | 409 kèm cả hai con số | `STOCK_CONFLICT`, `expectedSystemQty:56, currentStockQty:55`, **không điều chỉnh gì** |
+| Kiểm kê lại sau khi tải lại | Thành công | 201, tồn đúng |
+| Báo cáo doanh thu hôm nay | Phản ánh các hóa đơn vừa tạo | 18 hóa đơn, 1.336.006 đ |
+| Báo cáo tồn kho | Có số liệu | 117 sản phẩm, giá trị 112.453.241,91 đ, 10 mặt hàng dưới ngưỡng |
+| Khoảng ngày đảo **một ngày** | 400 | `INVALID_DATE_RANGE` — **backend không dính lỗi off-by-one** mà frontend từng mắc |
+| Khoảng quá 366 ngày | 400 | `INVALID_DATE_RANGE` |
+
+**Lưu ý**: `POST /purchases/{id}/receive` trả **200** (không phải 201) — đúng theo hợp
+đồng, vì nhận hàng không tạo tài nguyên mới.
