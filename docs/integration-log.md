@@ -91,6 +91,11 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 - Backend: `tuanlinh1997/api-mini-store` @ `ea21e93` (clone tại `/home/karpy/Lab/api-mini-store`)
 - Frontend: `m1` @ `4ced98e` (nhánh `feat/backend-integration`)
 - Ngày tích hợp: 2026-10-28
+- API: http://localhost:3001 · Swagger: http://localhost:3001/api/docs
+- Tài khoản quản trị (seed): `admin` / `Admin-Mvp-2026`
+- Mật khẩu dữ liệu demo: `Demo-Mvp-2026`
+- `ACCESS_TOKEN_TTL_SECONDS=60` để kiểm tra làm mới token bằng tay
+- `CORS_ORIGINS=http://localhost:3000` (mặc định của backend là 5173,3001 — không có origin của ta)
 
 ### Slice 1 — auth + products
 - [ ] Chưa chạy. Chặn bởi: chưa có backend phản hồi.
