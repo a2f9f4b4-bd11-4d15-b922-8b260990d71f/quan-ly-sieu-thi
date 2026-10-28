@@ -96,6 +96,16 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 - Mật khẩu dữ liệu demo: `Demo-Mvp-2026`
 - `ACCESS_TOKEN_TTL_SECONDS=60` để kiểm tra làm mới token bằng tay
 - `CORS_ORIGINS=http://localhost:3000` (mặc định của backend là 5173,3001 — không có origin của ta)
+- **Cách chạy thực tế**: `docker compose up -d mysql` + chạy API bằng npm (xem Ruling T3).
+  Dockerfile dùng `RUN --mount=type=cache` nên cần BuildKit; máy này không có `docker buildx`.
+- Dữ liệu: `npm run prisma:seed` rồi `npm run seed:demo -- --reset`
+  → 117 sản phẩm, 1200 hóa đơn, 60 khách, 54 phiếu nhập, 14 mặt hàng dưới ngưỡng
+- Tài khoản đăng nhập được (đã kiểm chứng):
+  `admin`/`Admin-Mvp-2026` · `cashier`, `stockkeeper`, `cashier2`/`Demo-Mvp-2026`
+  (`cashier.cu` bị khóa — dùng để kiểm thử từ chối đăng nhập)
+- `GET /api/v1/health` → 200; API listening on http://127.0.0.1:3001/api/v1
+- Sinh lại `api-types.ts` từ `http://localhost:3001/api/docs-json`: **giống hệt** bản đã commit
+- `npm run verify` sau khi sinh lại: 153/153 xanh
 
 ### Slice 1 — auth + products
 - [ ] Chưa chạy. Chặn bởi: chưa có backend phản hồi.
