@@ -20,6 +20,16 @@ async function sell(page: Page, sku: string, name?: string, qty?: string) {
 
 test.use({ viewport: { width: 1440, height: 900 } });
 
+/**
+ * Screenshots are a deliberate artefact, not a test. Without this guard every
+ * `npx playwright test` silently rewrites docs/screenshots — and a run that
+ * happens to be in live mode, or against a stopped backend, replaces good
+ * images with empty ones.
+ *
+ * Run on purpose with: npm run screenshots
+ */
+test.skip(!process.env.CAPTURE_SCREENSHOTS, "set CAPTURE_SCREENSHOTS=1 (npm run screenshots)");
+
 test("capture README screenshots", async ({ page, context }) => {
   await resetMockData(page);
 

@@ -14,7 +14,8 @@
     "verify": "tsc --noEmit && vitest run",
     "test:e2e:report": "playwright test --reporter=html",
     "dev:live": "NEXT_PUBLIC_API_MODE=live NEXT_PUBLIC_API_BASE_URL=${API_URL:-http://localhost:3001} next dev",
-    "test:e2e:live": "NEXT_PUBLIC_API_MODE=live playwright test live-smoke"
+    "test:e2e:live": "NEXT_PUBLIC_API_MODE=live playwright test live-smoke",
+    "screenshots": "CAPTURE_SCREENSHOTS=1 playwright test capture-screenshots"
   },
   "dependencies": {
     "@hookform/resolvers": "^6.0.0",
