@@ -108,7 +108,21 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 - `npm run verify` sau khi sinh lại: 153/153 xanh
 
 ### Slice 1 — auth + products
-- [ ] Chưa chạy. Chặn bởi: chưa có backend phản hồi.
+- [x] **Đạt.** Không phát hiện sai lệch giữa mock và API thật.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| CORS cho `GET` | `access-control-allow-origin: http://localhost:3000` |
+| CORS preflight cho `POST /sales` | 204, cho phép `POST` và header `Authorization` |
+| Điều hướng theo vai trò | `admin`→`/` · `cashier`→`/pos` · `stockkeeper`→`/inventory` |
+| Sai mật khẩu | Một thông báo chung, không lộ tài khoản có tồn tại hay không |
+| Tài khoản bị khóa (`cashier.cu`) | Bị từ chối |
+| Làm mới token single-flight | Hết hạn 60s → **đúng 1** lần `POST /auth/refresh`, không bị đăng xuất |
+| Phát lại request có body sau 401 | `POST /sales` 2 lần (lần 2 là replay), 1 refresh, hóa đơn `HD202610280013` **được tạo**, phiên còn nguyên |
+
+**Lưu ý vận hành**: giới hạn đăng nhập 5 lần/60 giây/IP. Khi chạy nhiều kiểm thử
+đăng nhập liên tiếp sẽ gặp `429`, biểu hiện **giống hệt sai mật khẩu**. Đã gặp
+trong lúc kiểm thử; chờ hết 60 giây là bình thường trở lại.
 
 ### Slice 2 — danh sách chỉ đọc (danh mục, NCC, khách hàng, tồn kho)
 - [ ] Chưa chạy.
