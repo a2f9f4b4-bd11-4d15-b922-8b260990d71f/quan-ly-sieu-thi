@@ -86,6 +86,12 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 
 ## 5. Nhật ký các slice
 
+### Môi trường
+
+- Backend: `tuanlinh1997/api-mini-store` @ `ea21e93` (clone tại `/home/karpy/Lab/api-mini-store`)
+- Frontend: `m1` @ `4ced98e` (nhánh `feat/backend-integration`)
+- Ngày tích hợp: 2026-10-28
+
 ### Slice 1 — auth + products
 - [ ] Chưa chạy. Chặn bởi: chưa có backend phản hồi.
 
