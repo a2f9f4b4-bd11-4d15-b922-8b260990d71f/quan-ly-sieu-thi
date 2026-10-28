@@ -14,9 +14,10 @@ The frontend was built entirely against a stateful in-browser mock, deliberately
 and the backend could be developed in parallel. This spec covers connecting the two for the
 first time.
 
-**What success looks like**: the backend runs locally in Docker, the frontend talks to it
-through `npm run dev:live`, all four business areas work end to end, and every behavioural
-difference between the mock and the real API is either fixed or recorded with a named owner.
+**What success looks like**: a working MVP. The backend runs locally in Docker, the frontend
+talks to it through `npm run dev:live`, and every main flow can be demonstrated end to end on
+real data — not a divergence count. Behavioural differences are recorded as they surface, but
+finding them is not the goal; a running system is.
 
 **Who it is for**: the two developers on this project — one on each side.
 
@@ -27,6 +28,7 @@ difference between the mock and the real API is either fixed or recorded with a 
 | Target | **Local dev on one machine.** Not a deployment. |
 | Verification approach | **Approach A** — slice-by-slice bring-up plus an API-level parity suite |
 | Mock's future | Stays the default; live is opt-in |
+| MVP scope | **Integration first, missing forms right after** — two phases with the running system reached before new UI surface is added |
 
 ### Findings from reading the backend (not assumptions)
 
@@ -63,17 +65,31 @@ the mock does.
 
 ### In scope
 
+**Phase 1 — reach the MVP (this is the priority):**
+
 - Running the backend locally and configuring it to accept our frontend.
 - Four integration slices: auth → reads → checkout → remainder.
-- An API-level parity suite runnable against both the mock and the live backend.
-- Recording every divergence in `docs/integration-log.md` with an owner.
+- Recording divergences in `docs/integration-log.md` with an owner, as they surface.
+
+**Phase 2 — make every screen usable:**
+
+- The six missing flows: add/edit for products and categories, edit for suppliers, customers
+  and staff, and the draft purchase editor (F3 `thêm`+`sửa`; F2, F4, F7 `sửa`; §5.3).
+- A reset-password action for staff (the hook exists, unused).
+
+**Phase 3 — harden:**
+
+- The API-level parity suite, runnable against both the mock and the live backend.
+
+Phases are gated: Phase 2 does not start until the MVP demonstrably runs, so a new form never
+fails for a reason entangled with integration.
 
 ### Out of scope
 
 - **Deployment.** Local only.
 - **Modifying the backend repository.** Findings are escalated, not patched by us.
 - **Retiring the mock.** It remains the default backend for the test suites.
-- **The six missing `thêm`/`sửa` flows** (F2, F3, F4, F7, §5.3). Separate work.
+- **Invoice void/return, batch & expiry, weighed goods, promotions.** Out of SRS scope for v1.
 
 ---
 
@@ -158,7 +174,35 @@ section is indistinguishable from an unrun slice.
 
 ---
 
-## 5. The parity suite
+## 5. MVP acceptance
+
+The MVP is reached when these run against the **live backend**, by hand, on real data.
+Not "no divergences found" — these specific flows working.
+
+| # | Flow | Passes when |
+|---|---|---|
+| 1 | Log in as each of the three roles | Each lands on its own home screen; a locked account is refused |
+| 2 | Sell at the POS | Scan by SKU, attach a customer by phone, pay, receipt shows a real `HD…` number and the points earned |
+| 3 | The sale is real | Stock dropped by what was sold; the invoice appears in Hóa đơn; the customer's points went up |
+| 4 | Receive a purchase | A draft moves to Đã nhận, stock rises, a `PURCHASE` row appears in Biến động kho |
+| 5 | Count stock | Recording a difference adjusts stock and writes an `ADJUSTMENT` movement with a reason |
+| 6 | Reports reflect reality | Today's revenue report shows the sale from step 2, with the right total |
+| 7 | Roles hold | A cashier sees no cost price and is refused at `/reports/revenue` and `/users` |
+| 8 | Sessions survive | With a 60s access token, working past expiry refreshes once and does not log you out |
+
+Flow 8 is listed last but is the one most likely to fail, because it is the only one that
+exercises real token rotation. Flows 1–7 can all pass while 8 is broken, and a POS that
+ejects the cashier every minute is not an MVP.
+
+**Anything that fails here stops Phase 1.** Anything that merely *differs* from the mock,
+without breaking a flow, is logged and carried into Phase 3.
+
+---
+
+## 6. The parity suite — Phase 3
+
+**This comes after the MVP runs.** It is a quality investment, not a gate: a parity assertion
+failing on a rule nobody demos is a logged finding, not a blocker.
 
 One test file, run twice: once against the mock, once against live, with identical assertions.
 A rule that passes on mock and fails on live *is* the integration bug, named precisely.
@@ -207,7 +251,7 @@ building teardown the API does not support.
 
 ---
 
-## 6. Divergence triage
+## 7. Divergence triage
 
 Every difference sorts into exactly one bucket, and the bucket determines the owner.
 
@@ -233,7 +277,7 @@ fix belongs in `lib/api`, not in the screen.
 
 ---
 
-## 7. The mock's role after integration
+## 8. The mock's role after integration
 
 The mock remains the **default** backend. It serves 153 unit tests and 61 end-to-end tests,
 runs with no Docker and no database, and is what keeps the suite fast and deterministic. Live
@@ -245,7 +289,7 @@ that runs against it.
 
 ---
 
-## 8. Risks
+## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
@@ -256,7 +300,7 @@ that runs against it.
 
 ---
 
-## 9. Open questions
+## 10. Open questions
 
 1. **Backend credentials.** `SEED_ADMIN_PASSWORD` and `SEED_DEMO_PASSWORD` are set by whoever
    seeds the database. These need recording in `integration-log.md` once chosen.
