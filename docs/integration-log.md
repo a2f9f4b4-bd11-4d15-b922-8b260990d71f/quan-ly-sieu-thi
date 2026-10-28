@@ -125,7 +125,16 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 trong lúc kiểm thử; chờ hết 60 giây là bình thường trở lại.
 
 ### Slice 2 — danh sách chỉ đọc (danh mục, NCC, khách hàng, tồn kho)
-- [ ] Chưa chạy.
+- [x] **Đạt.** Không phát hiện sai lệch.
+
+| Kiểm tra | Kết quả |
+|---|---|
+| 8 màn hình danh sách | Đều có dữ liệu: sản phẩm, danh mục, NCC, khách hàng, tồn kho, biến động, phiếu nhập, nhân viên |
+| Phân trang thật | 117 sản phẩm / 6 trang; tổng số bản ghi không đổi giữa các trang |
+| Tìm kiếm | Lọc đúng; ô tìm kiếm `maxlength=100` |
+| Chỉ nhập khoảng trắng | **Không** gửi request nào có `search=` |
+| Giá vốn với thu ngân | Khóa `costPrice` **vắng mặt trong payload thật**, không chỉ ẩn trên giao diện |
+| Chặn quyền bằng URL | `/reports/revenue`, `/users`, `/suppliers` → màn hình từ chối, **0 lần 403** |
 
 ### Slice 3 — `POST /sales`
 - [ ] Chưa chạy. **Slice quan trọng nhất**: chỉ slice này mới phát hiện được sai lệch
