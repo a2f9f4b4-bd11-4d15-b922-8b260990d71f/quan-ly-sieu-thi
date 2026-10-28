@@ -104,6 +104,23 @@ API nào.
 | `docs/superpowers/plans/` | Kế hoạch triển khai. |
 | `Báo cáo đồ án CNPM_Đề 09…docx` | Tài liệu phân tích — thiết kế (SRS). |
 
+### Chạy cùng backend thật
+
+```bash
+# 1. Backend (repo riêng, clone cạnh m1) — xem docs/integration-log.md
+cd ../api-mini-store
+docker compose up -d mysql && npm run start:prod
+
+# 2. Frontend
+cd m1/frontend && npm run dev:live
+
+# 3. Kiểm thử khói trên API thật (tự bỏ qua nếu backend chưa chạy)
+npm run test:e2e:live
+```
+
+Tài khoản, cấu hình và toàn bộ sai lệch đã phát hiện:
+[`docs/integration-log.md`](docs/integration-log.md).
+
 ## Trạng thái
 
 Mười lăm màn hình đã chạy được trên mock. **Chưa tích hợp với backend thật** — xem

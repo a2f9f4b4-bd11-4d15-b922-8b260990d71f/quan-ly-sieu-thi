@@ -187,3 +187,30 @@ tính. Chỉ kiểm tra trong khoảng 00:00–07:00 giờ VN mới kết luận
 
 **Lưu ý**: `POST /purchases/{id}/receive` trả **200** (không phải 201) — đúng theo hợp
 đồng, vì nhận hàng không tạo tài nguyên mới.
+
+
+---
+
+## 6. Nghiệm thu MVP
+
+Chạy bằng `npm run test:e2e:live` (trừ ghi chú thủ công). Tất cả **đạt**.
+
+| # | Luồng | Kết quả | Bằng chứng |
+|---|-------|---------|------------|
+| 1 | Đăng nhập theo ba vai trò | Đạt | `admin`→`/`, `cashier`→`/pos`, `stockkeeper`→`/inventory`; `cashier.cu` bị từ chối |
+| 2 | Bán hàng tại POS | Đạt | Hóa đơn `HD202610280015`, phân bổ giảm giá 997 đ khớp tuyệt đối |
+| 3 | Giao dịch có thật | Đạt | Tồn 41→38, hóa đơn vào lịch sử, điểm khách 2→4 |
+| 4 | Nhận hàng | Đạt | Tồn 46→56, giá vốn 8643,59→**9415,27** đúng bình quân gia quyền |
+| 5 | Kiểm kê | Đạt | Lệch tồn → `STOCK_CONFLICT` (56 vs 55), không điều chỉnh; đếm lại thành công |
+| 6 | Báo cáo phản ánh thực tế | Đạt | 18 hóa đơn / 1.336.006 đ trong ngày |
+| 7 | Phân quyền | Đạt | Thu ngân không thấy giá vốn, bị chặn ở `/reports/revenue` và `/users`, **0 lần 403** |
+| 8 | Phiên sống qua hạn token | Đạt | Hết hạn 60s → **đúng 1** lần refresh, không bị đăng xuất |
+
+### Kiểm thử còn chạy lại được
+
+```bash
+npm run test:e2e:live    # 4 bài, phủ cả 8 luồng; tự bỏ qua nếu backend chưa chạy
+```
+
+Bộ kiểm thử trên mock **không phụ thuộc** backend: với backend tắt hoàn toàn,
+`npm run verify` → 154/154 và `npm run test:e2e` → 61 đạt, 4 bỏ qua.
