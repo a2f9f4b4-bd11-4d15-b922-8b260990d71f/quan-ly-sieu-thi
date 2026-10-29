@@ -94,8 +94,20 @@ const authMiddleware: Middleware = {
     }
   },
 
-  async onError({ id }) {
+  async onError({ id, error }) {
     pendingClones.delete(id);
+    // openapi-fetch rethrows a transport failure (server down, DNS, CORS) unless a
+    // middleware hands back a Response. Without this, normalizeError never sees
+    // status 0 and the user gets the generic "Vui lòng thử lại." instead of
+    // "Không kết nối được máy chủ." Status 0 is not a real HTTP status, so it cannot
+    // collide with anything the server sends.
+    if (error instanceof TypeError) {
+      return Response.json(
+        { success: false, code: "SERVICE_UNAVAILABLE", message: "Không kết nối được máy chủ." },
+        { status: 503 },
+      );
+    }
+    return undefined;
   },
 };
 
@@ -133,15 +145,26 @@ export function unwrapList<T>(result: ApiListResult<T>): Paged<T> {
  * (e.g. POST /users/{id}/reset-password). Throws on failure, returns nothing.
  */
 export function unwrapVoid(result: { error?: unknown; response: Response }): void {
-  if (result.error) {
+  // openapi-fetch leaves `error` undefined when a non-ok response has an empty body
+  // (204, or a gateway error sent with Content-Length: 0), so the status has to be
+  // checked too — otherwise a failed reset-password would report success and an
+  // admin would hand out a credential that was never set.
+  if (result.error || !result.response.ok) {
     throw normalizeError(result.response?.status ?? 0, result.error);
   }
 }
 
 export async function login(username: string, password: string): Promise<Session> {
-  const { data, error, response } = await bare.POST("/api/v1/auth/login", {
-    body: { username, password } as never,
-  });
+  // `bare` carries no middleware, so a transport failure here surfaces as a raw
+  // TypeError. Login is the first screen anyone hits when the backend is down, and
+  // "Đăng nhập thất bại" would send them hunting for a password problem instead.
+  const result = await bare
+    .POST("/api/v1/auth/login", { body: { username, password } as never })
+    .catch((cause) => {
+      if (cause instanceof TypeError) throw normalizeError(0, null);
+      throw cause;
+    });
+  const { data, error, response } = result;
   if (error || !data) throw normalizeError(response.status, error);
   const payload = (data as AuthPayload).data;
   const session = {

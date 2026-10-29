@@ -34,7 +34,11 @@ export function ok(data: unknown, status = 200, meta?: unknown) {
   );
 }
 
-/** Some endpoints succeed with no `data` field at all (e.g. reset-password). */
+/**
+ * Endpoints that succeed without a payload (e.g. reset-password). The contract still
+ * marks `data` required and the live API sends `data: null`, so this emits it too —
+ * a mock that is merely close enough is how the flat-envelope bug survived 154 tests.
+ */
 export function okNoData(status = 200) {
   return HttpResponse.json(
     {
@@ -42,6 +46,7 @@ export function okNoData(status = 200) {
       statusCode: status,
       code: "OK",
       message: "Thành công",
+      data: null,
       requestId: `req-${++requestCounter}`,
       timestamp: new Date().toISOString(),
     },
