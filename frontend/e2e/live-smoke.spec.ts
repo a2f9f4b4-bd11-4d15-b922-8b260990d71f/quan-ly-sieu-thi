@@ -145,25 +145,128 @@ test("flows 2+3+6: a sale moves stock, lands in history, and shows in the report
   expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
 
+/** Reads a VND amount out of the UI. formatVnd rounds to whole đồng. */
+function parseVnd(text: string): number {
+  return Number(text.replace(/[^\d]/g, ""));
+}
+
 /**
- * Flows 4+5, READ-ONLY reach only. Receiving a purchase and submitting a count are
- * verified manually (docs/integration-log.md §5) — this test navigates, it does not
- * write. Do not describe it as covering flows 4 and 5 end to end.
+ * Flow 4: receiving a purchase is the ONLY operation that raises stock. It must move
+ * DRAFT -> RECEIVED, add the quantity, recompute the weighted-average cost (BR11) and
+ * write a PURCHASE movement.
+ *
+ * This test writes to the real database: it creates a purchase and receives it, so
+ * stock and cost for the chosen product change permanently. That is inherent to
+ * testing a write path — run it against a dev/seed database, never production.
  */
-test("flows 4+5: stockkeeper reaches purchases and stock counts (read-only)", async ({ page }) => {
+test("flow 4: receiving a purchase raises stock and recomputes weighted cost", async ({ page }) => {
   const liveCalls = trackLiveCalls(page);
   await login(page, STOCK.u, STOCK.p);
-  await expect(page).toHaveURL("/inventory");
 
-  await page.goto("/purchases");
-  await expect(page.getByTestId("purchase-row").first()).toBeVisible();
+  // Take the product from the purchase form's own select, so it is guaranteed to be
+  // selectable there. Picking off /products could land on a discontinued product that
+  // the form does not offer.
+  await page.goto("/purchases/new");
+  await page.getByRole("button", { name: "Thêm dòng hàng" }).click();
+  const productSelect = page.getByLabel("Sản phẩm dòng 1");
+  await expect(productSelect).toBeVisible();
+  const productName = (await productSelect.locator("option:checked").textContent())!.trim();
+  expect(productName, "purchase form offered no products").not.toBe("");
 
-  await page.goto("/inventory/counts");
-  await page.getByLabel("Tìm sản phẩm").fill("");
-  await expect(page.getByRole("button", { name: /— tồn \d+/ }).first()).toBeVisible();
+  // Baseline. Stockkeeper may see Giá vốn (viewCostPrice), so both numbers are readable.
+  await page.goto("/products");
+  await page.getByLabel("Tìm kiếm").fill(productName);
+  const productRow = page.getByTestId("product-row").first();
+  await expect(productRow).toBeVisible();
+  const headers = await page.getByRole("columnheader").allTextContents();
+  const costCol = headers.findIndex((h) => h.trim() === "Giá vốn");
+  const stockCol = headers.findIndex((h) => h.trim() === "Tồn");
+  expect(costCol, "Giá vốn column not visible to the stockkeeper").toBeGreaterThan(-1);
+  const costBefore = parseVnd((await productRow.locator("td").nth(costCol).textContent())!);
+  const stockBefore = Number((await productRow.locator("td").nth(stockCol).textContent())!.trim());
+
+  // A unit price far from the current cost, so a wrong formula (replacing the cost, or
+  // averaging the two prices without weighting) lands nowhere near the expectation.
+  const qty = 7;
+  const unitPrice = costBefore * 3 + 1000;
+
+  await page.goto("/purchases/new");
+  await page.getByLabel("Nhà cung cấp").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Thêm dòng hàng" }).click();
+  await page.getByLabel("Sản phẩm dòng 1").selectOption({ label: productName });
+  await page.getByLabel("Số lượng dòng 1").fill(String(qty));
+  await page.getByLabel("Giá nhập dòng 1").fill(String(unitPrice));
+  await page.getByRole("button", { name: "Lưu nháp" }).click();
+
+  // Saving a draft must NOT move stock yet — that is the whole point of BR3.
+  await expect(page).toHaveURL(/\/purchases\/\d+$/);
+  await expect(page.getByTestId("purchase-status")).toHaveText("Nháp");
+
+  await page.getByRole("button", { name: "Xác nhận nhận hàng" }).click();
+  await expect(page.getByTestId("purchase-status")).toHaveText("Đã nhận");
+  // A received purchase is final: no action buttons remain.
+  await expect(page.getByRole("button", { name: "Xác nhận nhận hàng" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Hủy phiếu" })).toHaveCount(0);
+
+  await page.goto("/products");
+  await page.getByLabel("Tìm kiếm").fill(productName);
+  const after = page.getByTestId("product-row").first();
+  await expect(after).toBeVisible();
+  const stockAfter = Number((await after.locator("td").nth(stockCol).textContent())!.trim());
+  const costAfter = parseVnd((await after.locator("td").nth(costCol).textContent())!);
+
+  expect(stockAfter, "received quantity did not reach stock").toBe(stockBefore + qty);
+
+  // BR11: weighted average, not replacement. costBefore is already rounded to the
+  // đồng by the UI, so allow a 2 đồng tolerance for that — far tighter than the gap
+  // any wrong formula would produce.
+  const expectedCost =
+    (stockBefore * costBefore + qty * unitPrice) / (stockBefore + qty);
+  expect(
+    Math.abs(costAfter - expectedCost),
+    `weighted cost: expected ~${Math.round(expectedCost)}, got ${costAfter} ` +
+      `(before ${stockBefore} @ ${costBefore}, received ${qty} @ ${unitPrice})`,
+  ).toBeLessThanOrEqual(2);
 
   await page.goto("/inventory/movements");
-  await expect(page.getByTestId("movement-row").first()).toBeVisible();
+  await page.getByLabel("Loại biến động").selectOption({ label: "Nhập hàng" });
+  await expect(page.getByTestId("movement-row").first()).toContainText(productName);
+  expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
+});
+
+/**
+ * Flow 5: a stock count adjusts stock to the counted figure and records why.
+ * Also writes to the real database.
+ */
+test("flow 5: a stock count adjusts stock and records an ADJUSTMENT", async ({ page }) => {
+  const liveCalls = trackLiveCalls(page);
+  await login(page, STOCK.u, STOCK.p);
+
+  await page.goto("/inventory/counts");
+  const pick = page.getByRole("button", { name: /— tồn \d+/ }).first();
+  await expect(pick).toBeVisible();
+  const picked = (await pick.textContent())!.trim();
+  const productName = picked.replace(/\s*—\s*tồn\s*\d+$/, "").trim();
+  await pick.click();
+
+  const systemQty = Number((await page.getByTestId("system-qty").textContent())!.trim());
+  const counted = systemQty + 1;
+  await page.getByLabel("Số lượng thực đếm").fill(String(counted));
+  await page.getByLabel("Lý do điều chỉnh").fill("Kiểm kê tự động (live-smoke)");
+  await page.getByRole("button", { name: "Ghi nhận kiểm kê" }).click();
+
+  // The adjustment must land on stock, not just in the count history.
+  await page.goto("/inventory");
+  await page.getByLabel("Tìm kiếm").fill(productName);
+  const row = page.getByTestId("stock-row").first();
+  await expect(row).toBeVisible();
+  const stockAfter = Number((await row.locator("td").nth(4).textContent())!.trim());
+  expect(stockAfter, `counted ${counted}, stock shows ${stockAfter}`).toBe(counted);
+
+  await page.goto("/inventory/movements");
+  await page.getByLabel("Loại biến động").selectOption({ label: "Điều chỉnh" });
+  const movement = page.getByTestId("movement-row").first();
+  await expect(movement).toContainText(productName);
   expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
 
