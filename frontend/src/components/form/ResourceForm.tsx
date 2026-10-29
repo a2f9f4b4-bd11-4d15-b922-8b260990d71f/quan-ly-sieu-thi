@@ -50,8 +50,10 @@ export function ResourceForm({
     } catch (error) {
       // Field-scoped errors land on their inputs; anything else becomes a banner
       // and the dialog stays open so the entry is not lost.
-      const message = applyServerErrors(error, (field, e) =>
-        setError(field, { message: e.message }),
+      const message = applyServerErrors(
+        error,
+        (field, e) => setError(field, { message: e.message }),
+        fields.map((f) => f.name),
       );
       if (message) setFormError(message);
     }
