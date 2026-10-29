@@ -219,8 +219,8 @@ Chạy bằng `npm run test:e2e:live` (trừ ghi chú thủ công). Tất cả *
 ### Kiểm thử còn chạy lại được
 
 ```bash
-npm run test:e2e:live    # 4 bài: tự động luồng 1-3, 6-8; luồng 4-5 chỉ điều hướng
+npm run test:e2e:live    # 5 bài, tự động cả 8 luồng; ghi dữ liệu thật
 ```
 
 Bộ kiểm thử trên mock **không phụ thuộc** backend: với backend tắt hoàn toàn,
-`npm run verify` → 172/172 và `npm run test:e2e` → 60 đạt, 1 bỏ qua.
+`npm run verify` → 173/173 và `npm run test:e2e` → 60 đạt, 1 bỏ qua; `test:e2e:live` → 5/5.

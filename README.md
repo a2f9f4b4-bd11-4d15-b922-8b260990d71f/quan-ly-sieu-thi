@@ -93,7 +93,7 @@ API nào.
 
 | Đường dẫn | Nội dung |
 |-----------|----------|
-| `frontend/` | Ứng dụng Next.js + mock backend. 172 unit test, 60 kiểm thử đầu-cuối, 4 kiểm thử trên API thật. |
+| `frontend/` | Ứng dụng Next.js + mock backend. 173 unit test, 60 kiểm thử đầu-cuối, 5 kiểm thử trên API thật. |
 | `openapi.json` | Hợp đồng API — **nguồn sự thật**. |
 | `api-types.ts` | Kiểu TypeScript sinh tự động từ hợp đồng. Không sửa tay. |
 | `api_integration_guide.md` | Hình dạng request/response, luồng token, mã lỗi. |
@@ -181,7 +181,7 @@ Docker) và API thật. Hai chế độ trả lời hai câu hỏi khác nhau �
 
 ```bash
 cd frontend
-npm run verify        # kiểm tra kiểu + 172 unit test (~2 giây)
+npm run verify        # kiểm tra kiểu + 173 unit test (~2 giây)
 npm run test:e2e      # 60 kiểm thử đầu-cuối trên mock (~2 phút)
 npm run test:e2e:report   # như trên, kèm báo cáo HTML để đọc kết quả
 ```
@@ -189,15 +189,16 @@ npm run test:e2e:report   # như trên, kèm báo cáo HTML để đọc kết q
 Trên API thật — xem mục *Chạy cùng backend thật* để dựng backend trước:
 
 ```bash
-npm run test:e2e:live     # 4 bài: tự động luồng 1-3, 6-8 (~1,5 phút)
+npm run test:e2e:live     # 5 bài, tự động cả 8 luồng nghiệm thu (~1,5 phút)
 ```
 
 Nếu backend chưa chạy, lệnh này **tự bỏ qua** kèm hướng dẫn, không báo đỏ. Đặt
 `LIVE_REQUIRED=1` để biến trường hợp đó thành lỗi — dùng cho CI, nơi một lần chạy
 xanh mà không kiểm gì cả còn tệ hơn một lần chạy đỏ.
 
-Bộ này **không** phủ hết tám luồng: luồng 4 (nhận hàng) và luồng 5 (kiểm kê) chỉ được
-điều hướng tới, không ghi dữ liệu. Hai luồng đó phải **kiểm bằng tay** theo mục B.
+Bộ này **ghi dữ liệu thật**: nó bán một sản phẩm, tạo và nhận một phiếu nhập, và ghi
+một phiếu kiểm kê. Tồn kho cùng giá vốn của vài sản phẩm sẽ thay đổi vĩnh viễn — chỉ
+chạy trên database demo, **không** chạy trên dữ liệu thật của cửa hàng.
 
 `npm run test:e2e` kết thúc với **60 passed, 1 skipped** — đúng như mong đợi, không phải
 lỗi. Bài bị bỏ qua là bài chụp ảnh màn hình, chỉ chạy khi được yêu cầu
