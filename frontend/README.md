@@ -118,7 +118,7 @@ quyền sẽ ra màn hình "Không có quyền truy cập", và màn hình đó 
 | `npm run verify` | Kiểm tra kiểu (`tsc --noEmit`) + toàn bộ unit test. **Chạy trước mỗi commit.** |
 | `npm run test:e2e` | Playwright, toàn bộ luồng UC-01…UC-05 |
 | `npm run test:e2e:report` | Như trên, kèm báo cáo HTML |
-| `npm run test:e2e:live` | 4 bài trên **API thật**, phủ 8 luồng nghiệm thu. Tự bỏ qua nếu backend chưa chạy |
+| `npm run test:e2e:live` | 4 bài trên **API thật**: tự động luồng 1-3, 6-8 (luồng 4-5 chỉ điều hướng). Tự bỏ qua nếu backend chưa chạy; `LIVE_REQUIRED=1` để bắt lỗi thay vì bỏ qua |
 | `npm run screenshots` | Sinh lại ảnh trong `docs/screenshots/`. Chỉ chạy khi chủ động muốn |
 | `npm run build` | Build production |
 
@@ -126,10 +126,11 @@ quyền sẽ ra màn hình "Không có quyền truy cập", và màn hình đó 
 > `npm run test:e2e` sẽ âm thầm chạy ở **chế độ live** chứ không phải mock. Kiểm tra
 > cổng 3000 trống trước khi tin vào kết quả một lần chạy.
 
-Hiện có **154 unit test**, **60 kiểm thử đầu-cuối trên mock** và **4 kiểm thử trên API thật**.
+Hiện có **172 unit test**, **60 kiểm thử đầu-cuối trên mock** và **4 kiểm thử trên API thật**.
 
-`npm run test:e2e` cho **60 passed, 5 skipped**. Năm bài skip là bình thường: 4 bài
-`live-smoke` cần API thật, 1 bài chụp ảnh chỉ chạy qua `npm run screenshots`.
+`npm run test:e2e` cho **60 passed, 1 skipped**. Bài skip là bài chụp ảnh, chỉ chạy qua
+`npm run screenshots`. Bốn bài `live-smoke` bị `testIgnore` loại khỏi lần chạy mặc định
+vì chúng cần API thật — chạy riêng bằng `npm run test:e2e:live`.
 
 ## Cấu trúc
 
@@ -183,8 +184,8 @@ Theo SRS, bốn chức năng còn thiếu phần **sửa**; tầng dữ liệu v
 Ngoài ra:
 
 - **Đã tích hợp xong với backend thật** (giai đoạn 1): cả 8 luồng nghiệm thu đều đạt trên
-  dữ liệu thật. Xem [`../docs/integration-log.md`](../docs/integration-log.md) để biết 8 sai
-  lệch hợp đồng đã xử lý và 4 câu hỏi còn chờ backend trả lời.
+  dữ liệu thật. Xem [`../docs/integration-log.md`](../docs/integration-log.md) để biết 10
+  sai lệch hợp đồng đã xử lý và 4 câu hỏi còn chờ backend trả lời.
 - Ảnh `docs/screenshots/trang-chu.png` đang trống vì chụp trúng lúc dữ liệu đang tải —
   lỗi đã biết của khâu chụp ảnh, không phải lỗi chức năng.
 - Giỏ hàng POS không lưu lại khi đóng tab; giá do máy chủ chốt lúc thanh toán.

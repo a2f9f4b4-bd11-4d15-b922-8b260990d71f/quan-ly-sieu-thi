@@ -93,12 +93,12 @@ API nào.
 
 | Đường dẫn | Nội dung |
 |-----------|----------|
-| `frontend/` | Ứng dụng Next.js + mock backend. 154 unit test, 60 kiểm thử đầu-cuối, 4 kiểm thử trên API thật. |
+| `frontend/` | Ứng dụng Next.js + mock backend. 172 unit test, 60 kiểm thử đầu-cuối, 4 kiểm thử trên API thật. |
 | `openapi.json` | Hợp đồng API — **nguồn sự thật**. |
 | `api-types.ts` | Kiểu TypeScript sinh tự động từ hợp đồng. Không sửa tay. |
 | `api_integration_guide.md` | Hình dạng request/response, luồng token, mã lỗi. |
 | `api_usage_guide.md` | API nào dùng khi nào, ở màn hình nào, ai được gọi. |
-| `docs/integration-log.md` | **Cần đọc trước khi tích hợp**: 8 sai lệch hợp đồng, 4 câu hỏi cho backend, kết quả nghiệm thu MVP. |
+| `docs/integration-log.md` | **Cần đọc trước khi tích hợp**: 10 sai lệch hợp đồng, 4 câu hỏi cho backend, kết quả nghiệm thu MVP. |
 | `edge-cases-and-failure-modes.md` | Sổ rủi ro: 67 tình huống biên, đã phân loại mức độ. |
 | `docs/superpowers/specs/` | Đặc tả thiết kế frontend. |
 | `docs/superpowers/plans/` | Kế hoạch triển khai. |
@@ -109,7 +109,9 @@ API nào.
 ```bash
 # 1. Backend (repo riêng, clone cạnh m1) — xem docs/integration-log.md
 cd ../api-mini-store
-docker compose up -d mysql && npm run start:prod
+docker compose up -d mysql
+npm ci && npx prisma generate && npx prisma migrate deploy && npm run seed
+npm run start:dev          # hoặc: npm run build && npm run start:prod
 
 # 2. Frontend
 cd m1/frontend && npm run dev:live
@@ -131,15 +133,16 @@ Docker) và API thật. Hai chế độ trả lời hai câu hỏi khác nhau �
 | Giao diện có tự nhất quán không? | `npm run verify` + `npm run test:e2e` | **Không** |
 | Giao diện có khớp với API thật không? | `npm run test:e2e:live` | **Có** |
 
-> Mock **không** chứng minh được tính tương thích với backend. Đã có tiền lệ: toàn bộ
-> 154 unit test và 60 e2e test đều xanh trong khi frontend đọc sai phong bì lỗi của API
-> — mọi mã lỗi rơi về thông báo chung. Chỉ chạy trên API thật mới lộ ra.
+> Mock **không** chứng minh được tính tương thích với backend. Đã có tiền lệ: lúc đó
+> toàn bộ 154 unit test và 60 e2e test đều xanh trong khi frontend đọc sai phong bì lỗi
+> của API — mọi mã lỗi rơi về thông báo chung. Chỉ chạy trên API thật mới lộ ra. Lần soát
+> sau đó còn tìm thấy hai lỗi cùng loại nữa trong `details`, cũng không bộ test nào thấy.
 
 ### A. Kiểm thử tự động
 
 ```bash
 cd frontend
-npm run verify        # kiểm tra kiểu + 154 unit test (~2 giây)
+npm run verify        # kiểm tra kiểu + 172 unit test (~2 giây)
 npm run test:e2e      # 60 kiểm thử đầu-cuối trên mock (~2 phút)
 npm run test:e2e:report   # như trên, kèm báo cáo HTML để đọc kết quả
 ```
@@ -147,14 +150,21 @@ npm run test:e2e:report   # như trên, kèm báo cáo HTML để đọc kết q
 Trên API thật — xem mục *Chạy cùng backend thật* để dựng backend trước:
 
 ```bash
-npm run test:e2e:live     # 4 bài, phủ cả 8 luồng nghiệm thu (~1,5 phút)
+npm run test:e2e:live     # 4 bài: tự động luồng 1-3, 6-8 (~1,5 phút)
 ```
 
-Nếu backend chưa chạy, lệnh này **tự bỏ qua** kèm hướng dẫn, không báo đỏ.
+Nếu backend chưa chạy, lệnh này **tự bỏ qua** kèm hướng dẫn, không báo đỏ. Đặt
+`LIVE_REQUIRED=1` để biến trường hợp đó thành lỗi — dùng cho CI, nơi một lần chạy
+xanh mà không kiểm gì cả còn tệ hơn một lần chạy đỏ.
 
-`npm run test:e2e` kết thúc với **60 passed, 5 skipped** — đúng như mong đợi, không phải
-lỗi. Năm bài bị bỏ qua gồm 4 bài chỉ chạy trên API thật và 1 bài chụp ảnh màn hình chỉ
-chạy khi được yêu cầu (`npm run screenshots`), để nó không tự ghi đè ảnh trong repo.
+Bộ này **không** phủ hết tám luồng: luồng 4 (nhận hàng) và luồng 5 (kiểm kê) chỉ được
+điều hướng tới, không ghi dữ liệu. Hai luồng đó phải **kiểm bằng tay** theo mục B.
+
+`npm run test:e2e` kết thúc với **60 passed, 1 skipped** — đúng như mong đợi, không phải
+lỗi. Bài bị bỏ qua là bài chụp ảnh màn hình, chỉ chạy khi được yêu cầu
+(`npm run screenshots`) để nó không tự ghi đè ảnh trong repo. Bốn bài `live-smoke` không
+nằm trong lần chạy này: chúng cần API thật, nên `playwright.config.ts` loại chúng ra —
+nếu không, chúng sẽ báo đỏ mỗi khi backend đang chạy mà bộ kiểm thử lại phục vụ mock.
 
 **Lưu ý quan trọng khi chạy**: nếu đang có `npm run dev` hoặc `npm run dev:live` mở sẵn
 ở cổng 3000, Playwright sẽ dùng lại server đó — và bộ kiểm thử sẽ chạy **sai chế độ**
@@ -201,8 +211,10 @@ Những con số này có thể tự tính để đối chiếu:
 
 - **Chưa có chức năng sửa**: sản phẩm, danh mục, nhà cung cấp, khách hàng, nhân viên
   đều chưa có form sửa; sản phẩm và danh mục cũng chưa có form thêm. Đang ở giai đoạn 2.
-- **Giới hạn đăng nhập 5 lần/60 giây/IP**: lần thứ 6 trả `429` và hiện **giống hệt**
-  sai mật khẩu. Chờ một phút rồi thử lại trước khi kết luận.
+- **Giới hạn đăng nhập 5 lần/60 giây/IP**: lần thứ 6 trả `429` với thông báo riêng
+  *"Quá nhiều yêu cầu. Vui lòng thử lại sau."* — khác hẳn *"Tên đăng nhập hoặc mật khẩu
+  không đúng."* Chờ một phút rồi thử lại. (Trước khi sửa phong bì lỗi, hai trường hợp
+  này hiện giống nhau; giờ đã phân biệt được.)
 - **Không có hủy/hoàn hóa đơn**, không quản lý lô và hạn dùng, không bán hàng cân lẻ —
   nằm ngoài phạm vi phiên bản đầu theo SRS.
 - **Ảnh chụp màn hình trang chủ** trong README hiện trống do chụp đúng lúc đang tải —
@@ -219,7 +231,7 @@ và **`requestId`** trong phản hồi lỗi nếu có — backend ghi log theo 
 
 Mười lăm màn hình chạy được trên mock **và đã tích hợp xong với backend thật**: cả tám
 luồng nghiệm thu đều đạt trên dữ liệu thật (117 sản phẩm, 1200 hóa đơn). Chi tiết kết quả
-và tám sai lệch hợp đồng đã xử lý: [`docs/integration-log.md`](docs/integration-log.md).
+và mười sai lệch hợp đồng đã xử lý: [`docs/integration-log.md`](docs/integration-log.md).
 
 Còn thiếu phần **sửa** của bốn chức năng (F2 nhân viên, F3 sản phẩm và danh mục, F4 nhà
 cung cấp, F7 khách hàng), phần **thêm** của F3, và sửa phiếu nhập nháp. Tầng dữ liệu và

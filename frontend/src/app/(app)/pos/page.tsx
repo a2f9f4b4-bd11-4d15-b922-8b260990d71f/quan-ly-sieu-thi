@@ -8,13 +8,11 @@ import { PaymentDialog } from "@/components/pos/PaymentDialog";
 import { ReceiptDialog } from "@/components/pos/ReceiptDialog";
 import { useCart } from "@/features/pos/useCart";
 import { useCreateSale, type PaymentInput } from "@/features/sales/api";
+import { describeSaleError, type StockIssue } from "@/features/sales/saleError";
 import { useCustomerLookup } from "@/features/customers/api";
 import { api, unwrap } from "@/lib/api/client";
-import { AppError, isCode } from "@/lib/api/errors";
-import { formatVnd } from "@/lib/format/money";
+import { AppError } from "@/lib/api/errors";
 import type { CustomerResponse, ProductResponse } from "@/lib/api/types";
-
-type StockIssue = { productId: number; name: string; requested: number; available: number };
 
 export default function PosPage() {
   const { lines, addProduct, setQuantity, removeLine, clear, subtotal, toItems } = useCart();
@@ -75,26 +73,13 @@ export default function PosPage() {
           setPaying(false);
         },
         onError: (error) => {
-          if (isCode(error, "INSUFFICIENT_STOCK")) {
-            setStockIssues((error.details ?? []) as StockIssue[]);
+          const view = describeSaleError(error);
+          if (view.kind === "stock") {
+            setStockIssues(view.issues);
             setPaying(false);
             return;
           }
-          if (isCode(error, "INVALID_DISCOUNT")) {
-            const d = error.details as { maxDiscountAmount: number };
-            setPaymentError(`Giảm giá vượt hạn mức. Tối đa ${formatVnd(d.maxDiscountAmount)}.`);
-            return;
-          }
-          if (isCode(error, "INVALID_PAYMENT")) {
-            const d = error.details as { total: number; paid: number };
-            setPaymentError(
-              `Thanh toán ${formatVnd(d.paid)} phải bằng đúng số phải trả ${formatVnd(d.total)}.`,
-            );
-            return;
-          }
-          setPaymentError(
-            error instanceof AppError ? error.message : "Không tạo được hóa đơn. Vui lòng thử lại.",
-          );
+          setPaymentError(view.message);
         },
       },
     );

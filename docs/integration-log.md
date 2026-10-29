@@ -45,7 +45,7 @@ Lỗi biên dịch ở bước này **là tín hiệu cảnh báo sớm đang ho
 
 ---
 
-## 2. Sai lệch đã phát hiện khi xây frontend (từ `openapi.json`)
+## 2. Sai lệch hợp đồng đã phát hiện
 
 Tất cả đã được sửa ở phía frontend. Cần **xác nhận lại với server thật** vì mock
 được viết theo `openapi.json`, không theo code backend.
@@ -60,6 +60,15 @@ Tất cả đã được sửa ở phía frontend. Cần **xác nhận lại v�
 | 6 | Dòng hóa đơn in | `skuSnapshot`, `nameSnapshot`, có `id` | `sku`, `name`, **không có `id`**; `payments` cũng không có `id` | `src/components/pos/ReceiptDialog.tsx` |
 | 7 | Tạo phiếu kiểm kê | trả thẳng bản ghi kiểm kê | `StockCountResultResponse` = `{ stockCount, product }` | `src/features/inventory/api.ts` |
 | 8 | **Phong bì lỗi** | `{ error: { code, message, details } }` | **`ErrorEnvelopeDto` phẳng**: `{ success:false, statusCode, code, message, data:null, details, requestId, timestamp }` | `readEnvelope()` trong `src/lib/api/errors.ts` và `fail()` trong `src/mocks/handlers/_shared.ts` |
+| 9 | **`DUPLICATE_VALUE.details.fields`** | tên trường của form: `"phone"` | **tên index MySQL**: `"customers_phone_key"` — backend chuyển tiếp `meta.target` của Prisma | `resolveField()` trong `src/components/form/applyServerErrors.ts` |
+| 10 | **`details` của `INVALID_DISCOUNT` / `INVALID_PAYMENT`** | luôn có đủ các trường | **mọi trường đều không bắt buộc**; 4/5 nhánh `INVALID_PAYMENT` không gửi `details` nào | `describeSaleError()` trong `src/features/sales/saleError.ts` |
+
+> Sai lệch 9 và 10 được tìm ra ở lần soát toàn nhánh **sau** khi sửa sai lệch 8, và
+> cùng một cơ chế: mock phát ra một `details` giàu hơn thực tế, nên không bộ kiểm thử
+> nào phát hiện. Hậu quả trên API thật: trùng SĐT/tên đăng nhập **không hiện gì cả**
+> (thông báo gắn vào một trường không tồn tại nên banner bị chặn), và sai tiền khách
+> đưa khiến `onError` ném `TypeError` — thu ngân cũng **không thấy thông báo nào**.
+> Bài học đã ghi thành quy tắc thứ 7 trong `frontend/README.md`.
 
 > **Mục 8 là lỗi nghiêm trọng, chỉ lộ ra khi gọi API thật.** Frontend tự nghĩ ra lớp
 > lồng `error`; mock cũng phát ra đúng hình dạng sai đó, nên 153 unit test và 61 e2e
@@ -114,7 +123,7 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
   (`cashier.cu` bị khóa — dùng để kiểm thử từ chối đăng nhập)
 - `GET /api/v1/health` → 200; API listening on http://127.0.0.1:3001/api/v1
 - Sinh lại `api-types.ts` từ `http://localhost:3001/api/docs-json`: **giống hệt** bản đã commit
-- `npm run verify` sau khi sinh lại: 153/153 xanh
+- `npm run verify` sau khi sinh lại: 153/153 xanh (số liệu tại thời điểm đó)
 
 ### Slice 1 — auth + products
 - [x] **Đạt.** Không phát hiện sai lệch giữa mock và API thật.
@@ -130,7 +139,8 @@ Frontend đã làm hết phần của mình; hai mục này **không** khắc ph
 | Phát lại request có body sau 401 | `POST /sales` 2 lần (lần 2 là replay), 1 refresh, hóa đơn `HD202610280013` **được tạo**, phiên còn nguyên |
 
 **Lưu ý vận hành**: giới hạn đăng nhập 5 lần/60 giây/IP. Khi chạy nhiều kiểm thử
-đăng nhập liên tiếp sẽ gặp `429`, biểu hiện **giống hệt sai mật khẩu**. Đã gặp
+đăng nhập liên tiếp sẽ gặp `429`. Trước khi sửa phong bì lỗi, lỗi này biểu hiện
+**giống hệt sai mật khẩu**; sau khi sửa, thông báo đã khác biệt rõ ràng. Đã gặp
 trong lúc kiểm thử; chờ hết 60 giây là bình thường trở lại.
 
 ### Slice 2 — danh sách chỉ đọc (danh mục, NCC, khách hàng, tồn kho)
@@ -209,8 +219,8 @@ Chạy bằng `npm run test:e2e:live` (trừ ghi chú thủ công). Tất cả *
 ### Kiểm thử còn chạy lại được
 
 ```bash
-npm run test:e2e:live    # 4 bài, phủ cả 8 luồng; tự bỏ qua nếu backend chưa chạy
+npm run test:e2e:live    # 4 bài: tự động luồng 1-3, 6-8; luồng 4-5 chỉ điều hướng
 ```
 
 Bộ kiểm thử trên mock **không phụ thuộc** backend: với backend tắt hoàn toàn,
-`npm run verify` → 154/154 và `npm run test:e2e` → 61 đạt, 4 bỏ qua.
+`npm run verify` → 172/172 và `npm run test:e2e` → 60 đạt, 1 bỏ qua.
