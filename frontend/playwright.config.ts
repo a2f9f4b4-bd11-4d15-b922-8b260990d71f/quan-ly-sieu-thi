@@ -2,6 +2,11 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  // live-smoke needs the real API and live credentials. The default run serves the
+  // mock, so including it would fail whenever the backend happens to be up — which
+  // is exactly the state anyone doing integration work is in. `test:e2e:live` names
+  // the file explicitly, so it is unaffected by this ignore.
+  testIgnore: /live-smoke/,
   fullyParallel: false,
   workers: 1,
   // Next compiles each route on its first visit in dev, which can exceed the

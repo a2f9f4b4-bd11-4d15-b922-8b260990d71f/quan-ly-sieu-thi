@@ -19,8 +19,27 @@ test.describe.configure({ mode: "serial", timeout: 180_000 });
 
 test.beforeAll(async () => {
   const res = await fetch(`${BASE}/api/v1/health`).catch(() => null);
-  test.skip(!res || !res.ok, `No backend at ${BASE} — run: cd ../api-mini-store && docker compose up -d mysql && npm run start:prod`);
+  const up = Boolean(res && res.ok);
+  // LIVE_REQUIRED=1 turns "no backend" into a failure. Without it the suite skips,
+  // which exits 0 — fine locally, but in CI a green run that tested nothing is worse
+  // than a red one.
+  if (!up && process.env.LIVE_REQUIRED) {
+    throw new Error(`LIVE_REQUIRED is set but no backend answered at ${BASE}/api/v1/health.`);
+  }
+  test.skip(!up, `No backend at ${BASE} — see README "Chạy cùng backend thật".`);
 });
+
+/**
+ * Playwright reuses whatever server is already on :3000, so `test:e2e:live` can
+ * silently run this entire suite against the in-browser mock while the health check
+ * above happily confirms the real backend is up. Counting requests that actually
+ * left for BASE is the only way to know which backend answered.
+ */
+function trackLiveCalls(page: Page): () => number {
+  let hits = 0;
+  page.on("request", (r) => { if (r.url().startsWith(BASE)) hits += 1; });
+  return () => hits;
+}
 
 /**
  * Logs in, and distinguishes a throttle from a credential problem.
@@ -50,6 +69,7 @@ async function login(page: Page, u: string, p: string) {
 
 /** Flows 1+7 (cashier): routing, no cost price, forbidden screens issue no requests. */
 test("flows 1+7: cashier routing, cost hidden, role gating holds", async ({ page }) => {
+  const liveCalls = trackLiveCalls(page);
   const forbidden: string[] = [];
   page.on("response", (r) => { if (r.status() === 403) forbidden.push(new URL(r.url()).pathname); });
 
@@ -65,20 +85,37 @@ test("flows 1+7: cashier routing, cost hidden, role gating holds", async ({ page
     await expect(page.getByText("Không có quyền truy cập")).toBeVisible();
   }
   expect(forbidden, `403s taken: ${forbidden.join(", ")}`).toEqual([]);
+  expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
 
 /** Flows 2+3: selling moves stock, invoice and history together. */
 test("flows 2+3+6: a sale moves stock, lands in history, and shows in the report", async ({ page }) => {
+  const liveCalls = trackLiveCalls(page);
   await login(page, ADMIN.u, ADMIN.p);
   await expect(page).toHaveURL("/");
 
+  // Flow 6 baseline, taken before the sale so the increment can be asserted.
+  await page.goto("/reports/revenue");
+  await expect(page.getByTestId("total-invoices")).toBeVisible();
+  const invoicesBefore = Number((await page.getByTestId("total-invoices").textContent())!.trim());
+
+  // Pick the first row that actually has stock. Skipping when row 0 happens to be
+  // sold out would silently drop the only test that writes to the real backend.
   await page.goto("/inventory");
-  const row = page.getByTestId("stock-row").first();
-  await expect(row).toBeVisible();
-  const sku = (await row.locator("td").first().textContent())!.trim();
-  const name = (await row.locator("td").nth(1).textContent())!.trim();
-  const before = Number((await row.locator("td").nth(4).textContent())!.trim());
-  test.skip(before < 1, "first product has no stock to sell");
+  await expect(page.getByTestId("stock-row").first()).toBeVisible();
+  const rows = page.getByTestId("stock-row");
+  let sku = "", name = "", before = 0;
+  for (let i = 0; i < Math.min(await rows.count(), 20); i += 1) {
+    const cells = rows.nth(i).locator("td");
+    const qty = Number((await cells.nth(4).textContent())!.trim());
+    if (qty >= 1) {
+      sku = (await cells.first().textContent())!.trim();
+      name = (await cells.nth(1).textContent())!.trim();
+      before = qty;
+      break;
+    }
+  }
+  expect(sku, "no product in the first 20 inventory rows has stock to sell").not.toBe("");
 
   await page.goto("/pos");
   await page.getByLabel("Quét mã vạch hoặc nhập SKU").fill(sku);
@@ -100,15 +137,21 @@ test("flows 2+3+6: a sale moves stock, lands in history, and shows in the report
   await page.goto("/sales");
   await expect(page.getByTestId("sale-row").first()).toContainText(invoice);
 
-  // Flow 6: the revenue report reflects today's activity, including that sale.
+  // Flow 6: the revenue report counts that exact sale, not merely "something".
   await page.goto("/reports/revenue");
   await expect(page.getByTestId("total-invoices")).toBeVisible();
-  const invoices = Number((await page.getByTestId("total-invoices").textContent())!.trim());
-  expect(invoices).toBeGreaterThan(0);
+  const invoicesAfter = Number((await page.getByTestId("total-invoices").textContent())!.trim());
+  expect(invoicesAfter).toBe(invoicesBefore + 1);
+  expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
 
-/** Flow 4+5: stockkeeper can reach receiving and counting. */
-test("flows 4+5: stockkeeper reaches purchases and stock counts", async ({ page }) => {
+/**
+ * Flows 4+5, READ-ONLY reach only. Receiving a purchase and submitting a count are
+ * verified manually (docs/integration-log.md §5) — this test navigates, it does not
+ * write. Do not describe it as covering flows 4 and 5 end to end.
+ */
+test("flows 4+5: stockkeeper reaches purchases and stock counts (read-only)", async ({ page }) => {
+  const liveCalls = trackLiveCalls(page);
   await login(page, STOCK.u, STOCK.p);
   await expect(page).toHaveURL("/inventory");
 
@@ -121,24 +164,37 @@ test("flows 4+5: stockkeeper reaches purchases and stock counts", async ({ page 
 
   await page.goto("/inventory/movements");
   await expect(page.getByTestId("movement-row").first()).toBeVisible();
+  expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
 
 /** Flow 8: the session survives token expiry — one refresh, no logout. */
 test("flow 8: expiry triggers exactly one refresh and keeps the session", async ({ page }) => {
+  const liveCalls = trackLiveCalls(page);
   const refreshes: string[] = [];
   page.on("request", (r) => { if (r.url().includes("/auth/refresh")) refreshes.push(r.method()); });
 
   await login(page, ADMIN.u, ADMIN.p);
   await expect(page).toHaveURL("/");
 
-  // ACCESS_TOKEN_TTL_SECONDS is 60 in the integration .env.
-  await page.waitForTimeout(66_000);
+  // The backend's ACCESS_TOKEN_TTL_SECONDS lives in its untracked .env. On a longer
+  // default nothing expires during the wait, zero refreshes happen, and the failure
+  // below would point at the refresh machinery instead of at the config. Keep the two
+  // in step via LIVE_ACCESS_TOKEN_TTL.
+  const ttl = Number(process.env.LIVE_ACCESS_TOKEN_TTL ?? 60);
+  expect(Number.isFinite(ttl) && ttl > 0, "LIVE_ACCESS_TOKEN_TTL must be a positive number").toBe(true);
+  test.skip(ttl > 120, `access token TTL is ${ttl}s — too long to wait out in a smoke test`);
+  await page.waitForTimeout((ttl + 6) * 1000);
 
   await page.goto("/products");
   await expect(page.getByTestId("product-row").first()).toBeVisible();
   await page.goto("/customers");
   await expect(page.getByTestId("customer-row").first()).toBeVisible();
 
-  expect(refreshes.length, `refresh calls: ${refreshes.length}`).toBe(1);
+  expect(
+    refreshes.length,
+    `expected exactly 1 refresh after waiting out a ${ttl}s token, saw ${refreshes.length}. ` +
+      `If 0, check the backend's ACCESS_TOKEN_TTL_SECONDS matches LIVE_ACCESS_TOKEN_TTL.`,
+  ).toBe(1);
   await expect(page).not.toHaveURL(/\/login/);
+  expect(liveCalls(), `no request reached ${BASE} — the suite ran against the mock`).toBeGreaterThan(0);
 });
