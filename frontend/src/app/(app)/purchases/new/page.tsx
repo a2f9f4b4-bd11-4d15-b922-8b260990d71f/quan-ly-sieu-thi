@@ -8,7 +8,7 @@ import { RequireRole } from "@/lib/auth/RequireRole";
 import { useAuth } from "@/lib/auth/context";
 import { can } from "@/lib/auth/permissions";
 import { useSupplierList } from "@/features/suppliers/api";
-import { useProductList } from "@/features/products/api";
+import { useAllProducts, MAX_PAGE_SIZE } from "@/features/products/api";
 import { usePurchaseMutations, type PurchaseLineInput } from "@/features/purchases/api";
 import { AppError } from "@/lib/api/errors";
 
@@ -17,8 +17,8 @@ export default function NewPurchasePage() {
   const { user } = useAuth();
   // Never issue a request this role cannot make, even via a direct URL.
   const mayView = user ? can(user.role, "managePurchases") : false;
-  const suppliers = useSupplierList({ page: 1, pageSize: 100, isActive: true }, { enabled: mayView });
-  const products = useProductList({ page: 1, pageSize: 200 }, { enabled: mayView });
+  const suppliers = useSupplierList({ page: 1, pageSize: MAX_PAGE_SIZE, isActive: true }, { enabled: mayView });
+  const products = useAllProducts({ enabled: mayView });
   const { create } = usePurchaseMutations();
 
   const [supplierId, setSupplierId] = useState<number | undefined>();
