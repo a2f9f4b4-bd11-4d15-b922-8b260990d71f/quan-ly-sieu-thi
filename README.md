@@ -106,21 +106,60 @@ API nào.
 
 ### Chạy cùng backend thật
 
+Backend nằm ở repo riêng ([api-mini-store](https://github.com/tuanlinh1997/api-mini-store)),
+clone cạnh `m1`. NestJS + Prisma + MySQL 8.
+
+> **Đọc trước khi copy `.env.example`.** Ba giá trị mặc định trong đó **không chạy
+> được** với frontend này:
+>
+> | Biến | Mặc định | Phải đổi thành | Vì sao |
+> |---|---|---|---|
+> | `PORT` | `3000` | `3001` | Trùng cổng với frontend |
+> | `CORS_ORIGINS` | `…:5173,…:3001` | `http://localhost:3000` | Thiếu origin của frontend → trình duyệt chặn mọi request |
+> | `ACCESS_TOKEN_TTL_SECONDS` | `900` | `60` | Để kiểm được luồng 8 mà không phải chờ 15 phút |
+>
+> Lỗi CORS là lỗi dễ mất thời gian nhất: backend vẫn chạy, `curl` vẫn trả 200, nhưng
+> trên giao diện mọi thứ đều lỗi mà DevTools chỉ báo "Failed to fetch".
+
 ```bash
-# 1. Backend (repo riêng, clone cạnh m1) — xem docs/integration-log.md
 cd ../api-mini-store
+cp .env.example .env         # rồi sửa ba biến ở bảng trên + hai mật khẩu SEED_*
+
+# MySQL qua Docker. CHỈ dựng service mysql: Dockerfile của app dùng
+# RUN --mount=type=cache nên cần BuildKit — `docker compose up` toàn bộ sẽ
+# thất bại nếu máy không có `docker buildx`.
 docker compose up -d mysql
-npm ci && npx prisma generate && npx prisma migrate deploy && npm run seed
-npm run start:dev          # hoặc: npm run build && npm run start:prod
 
-# 2. Frontend
-cd m1/frontend && npm run dev:live
+npm ci
+npm run prisma:generate
+npm run prisma:deploy        # áp migration (migrate deploy)
+npm run prisma:seed          # tài khoản + dữ liệu nền tối thiểu
+npm run seed:demo            # tùy chọn: dữ liệu demo nhiều tháng để báo cáo có số
+npm run start:dev            # hoặc: npm run build && npm run start:prod
 
-# 3. Kiểm thử khói trên API thật (tự bỏ qua nếu backend chưa chạy)
-npm run test:e2e:live
+curl localhost:3001/api/v1/health     # mong đợi 200
 ```
 
-Tài khoản, cấu hình và toàn bộ sai lệch đã phát hiện:
+Sau đó, ở frontend:
+
+```bash
+cd ../m1/frontend
+npm run dev:live             # đổi host: API_URL=http://10.0.0.5:3001 npm run dev:live
+npm run test:e2e:live        # kiểm thử khói trên API thật
+```
+
+Tài khoản do seed tạo (mật khẩu lấy từ `SEED_ADMIN_PASSWORD` / `SEED_DEMO_PASSWORD`
+trong `.env` của backend):
+
+| Tên đăng nhập | Vai trò | Nguồn | Ghi chú |
+|---|---|---|---|
+| `admin` | Quản lý | `prisma:seed` | `SEED_ADMIN_PASSWORD` |
+| `cashier` | Thu ngân | `prisma:seed` | `SEED_DEMO_PASSWORD` |
+| `stockkeeper` | Kho | `prisma:seed` | `SEED_DEMO_PASSWORD` |
+| `cashier2`, `cashier3`, `stockkeeper2` | Thu ngân / Kho | `seed:demo` | `SEED_DEMO_PASSWORD` |
+| `cashier.cu` | Thu ngân | `seed:demo` | **Đã khóa** — dùng để kiểm luồng 1 |
+
+Cấu hình đã dùng khi tích hợp và toàn bộ sai lệch đã phát hiện:
 [`docs/integration-log.md`](docs/integration-log.md).
 
 ## Kiểm thử (dành cho QA)
@@ -220,7 +259,44 @@ Những con số này có thể tự tính để đối chiếu:
 - **Ảnh chụp màn hình trang chủ** trong README hiện trống do chụp đúng lúc đang tải —
   lỗi đã biết, không phải lỗi chức năng.
 
-### E. Báo lỗi
+### E. Kiểm thử phía backend
+
+Backend có bộ kiểm thử riêng. Chạy trong `../api-mini-store`:
+
+| Lệnh | Việc | Cần MySQL? |
+|---|---|---|
+| `npm run typecheck` | Kiểm tra kiểu | Không |
+| `npm run lint` | ESLint | Không |
+| `npm test` | 160 unit test (Jest) — gồm toàn bộ quy tắc nghiệp vụ trong `sale-calculator` | Không |
+| `npm run test:e2e` | Kiểm thử đầu-cuối của API, chạy tuần tự trên database thật | **Có** |
+| `npm run openapi:check` | Đối chiếu `openapi.json` đã commit với code hiện tại. Đạt: *"OpenAPI contract is up to date."* | Không |
+| `npm run seed:demo:verify` | Soát tính nhất quán của dữ liệu demo, in PASS/FAIL từng mục | **Có** |
+
+Hai lệnh cuối là thứ đáng chạy nhất khi nghi ngờ:
+
+- **`openapi:check`** báo đỏ nghĩa là code đã lệch khỏi hợp đồng đã commit. Khi đó
+  frontend đang dựng theo một hợp đồng cũ. Sinh lại rồi đồng bộ sang frontend:
+
+  ```bash
+  cd ../api-mini-store
+  npm run openapi:export       # sinh lại cả openapi.json và api-types.ts
+  cp docs/backend/openapi.json ../m1/openapi.json   # cả hai nằm ở GỐC repo m1,
+  cp docs/backend/api-types.ts ../m1/api-types.ts   # không nằm trong frontend/
+  cd ../m1/frontend && npm run verify   # kiểu sai ở đâu, hợp đồng đã đổi ở đó
+  ```
+
+  Đây là cách phát hiện thay đổi hợp đồng **trước** khi nó thành lỗi lúc chạy. Không
+  sửa tay `api-types.ts`.
+
+- **`seed:demo:verify`** chỉ đọc, không ghi. Nếu một con số trên báo cáo trông sai,
+  chạy lệnh này trước: nó phân biệt được "dữ liệu nền đã sai" với "frontend hiển thị sai".
+
+Khi cả hai bộ đều xanh mà giao diện vẫn sai, lỗi nằm ở chỗ ghép hai bên — phần mà
+chỉ `npm run test:e2e:live` và mục B kiểm được. Mười sai lệch trong
+[`docs/integration-log.md`](docs/integration-log.md) đều thuộc loại đó: không bộ kiểm
+thử nào của riêng một bên nhìn thấy chúng.
+
+### F. Báo lỗi
 
 Kèm theo: vai trò đang đăng nhập, chế độ (`dev` hay `dev:live`), các bước tái hiện,
 và **`requestId`** trong phản hồi lỗi nếu có — backend ghi log theo mã này.
