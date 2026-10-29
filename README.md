@@ -93,7 +93,7 @@ API nào.
 
 | Đường dẫn | Nội dung |
 |-----------|----------|
-| `frontend/` | Ứng dụng Next.js + mock backend. 154 unit test, 61 kiểm thử đầu-cuối, 4 kiểm thử trên API thật. |
+| `frontend/` | Ứng dụng Next.js + mock backend. 154 unit test, 60 kiểm thử đầu-cuối, 4 kiểm thử trên API thật. |
 | `openapi.json` | Hợp đồng API — **nguồn sự thật**. |
 | `api-types.ts` | Kiểu TypeScript sinh tự động từ hợp đồng. Không sửa tay. |
 | `api_integration_guide.md` | Hình dạng request/response, luồng token, mã lỗi. |
@@ -132,7 +132,7 @@ Docker) và API thật. Hai chế độ trả lời hai câu hỏi khác nhau �
 | Giao diện có khớp với API thật không? | `npm run test:e2e:live` | **Có** |
 
 > Mock **không** chứng minh được tính tương thích với backend. Đã có tiền lệ: toàn bộ
-> 154 unit test và 61 e2e test đều xanh trong khi frontend đọc sai phong bì lỗi của API
+> 154 unit test và 60 e2e test đều xanh trong khi frontend đọc sai phong bì lỗi của API
 > — mọi mã lỗi rơi về thông báo chung. Chỉ chạy trên API thật mới lộ ra.
 
 ### A. Kiểm thử tự động
@@ -140,7 +140,7 @@ Docker) và API thật. Hai chế độ trả lời hai câu hỏi khác nhau �
 ```bash
 cd frontend
 npm run verify        # kiểm tra kiểu + 154 unit test (~2 giây)
-npm run test:e2e      # 61 kiểm thử đầu-cuối trên mock (~2 phút)
+npm run test:e2e      # 60 kiểm thử đầu-cuối trên mock (~2 phút)
 npm run test:e2e:report   # như trên, kèm báo cáo HTML để đọc kết quả
 ```
 
@@ -151,6 +151,10 @@ npm run test:e2e:live     # 4 bài, phủ cả 8 luồng nghiệm thu (~1,5 phú
 ```
 
 Nếu backend chưa chạy, lệnh này **tự bỏ qua** kèm hướng dẫn, không báo đỏ.
+
+`npm run test:e2e` kết thúc với **60 passed, 5 skipped** — đúng như mong đợi, không phải
+lỗi. Năm bài bị bỏ qua gồm 4 bài chỉ chạy trên API thật và 1 bài chụp ảnh màn hình chỉ
+chạy khi được yêu cầu (`npm run screenshots`), để nó không tự ghi đè ảnh trong repo.
 
 **Lưu ý quan trọng khi chạy**: nếu đang có `npm run dev` hoặc `npm run dev:live` mở sẵn
 ở cổng 3000, Playwright sẽ dùng lại server đó — và bộ kiểm thử sẽ chạy **sai chế độ**

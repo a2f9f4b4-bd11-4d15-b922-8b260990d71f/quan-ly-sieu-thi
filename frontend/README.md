@@ -118,9 +118,18 @@ quyền sẽ ra màn hình "Không có quyền truy cập", và màn hình đó 
 | `npm run verify` | Kiểm tra kiểu (`tsc --noEmit`) + toàn bộ unit test. **Chạy trước mỗi commit.** |
 | `npm run test:e2e` | Playwright, toàn bộ luồng UC-01…UC-05 |
 | `npm run test:e2e:report` | Như trên, kèm báo cáo HTML |
+| `npm run test:e2e:live` | 4 bài trên **API thật**, phủ 8 luồng nghiệm thu. Tự bỏ qua nếu backend chưa chạy |
+| `npm run screenshots` | Sinh lại ảnh trong `docs/screenshots/`. Chỉ chạy khi chủ động muốn |
 | `npm run build` | Build production |
 
-Hiện có **153 unit test** và **60 kiểm thử đầu-cuối**.
+> Playwright dùng lại server đang mở ở cổng 3000. Nếu còn `npm run dev:live` chạy nền,
+> `npm run test:e2e` sẽ âm thầm chạy ở **chế độ live** chứ không phải mock. Kiểm tra
+> cổng 3000 trống trước khi tin vào kết quả một lần chạy.
+
+Hiện có **154 unit test**, **60 kiểm thử đầu-cuối trên mock** và **4 kiểm thử trên API thật**.
+
+`npm run test:e2e` cho **60 passed, 5 skipped**. Năm bài skip là bình thường: 4 bài
+`live-smoke` cần API thật, 1 bài chụp ảnh chỉ chạy qua `npm run screenshots`.
 
 ## Cấu trúc
 
@@ -153,6 +162,11 @@ Những điểm này đã gây lỗi thật trong quá trình xây dựng:
    đồng đổi; lỗi biên dịch chính là cảnh báo sớm.
 6. **Không ghi đè `next.config.ts`** — `cacheComponents` là bắt buộc cho
    `export const instant = false`. Chỉ sửa, đừng viết lại.
+7. **Mock phải phát ra đúng hình dạng trong hợp đồng, không phải hình dạng ta tưởng.**
+   Phong bì lỗi là **phẳng** (`{ success:false, statusCode, code, message, data, details,
+   requestId, timestamp }`). Frontend từng tự nghĩ ra lớp lồng `error`, mock phát ra đúng
+   cái sai đó, nên toàn bộ test đều xanh trong khi mọi mã lỗi từ API thật rơi về
+   `INTERNAL_ERROR`. Khi nghi ngờ hình dạng, đọc `openapi.json` — đừng suy đoán.
 
 ## Chưa làm
 
@@ -168,8 +182,11 @@ Theo SRS, bốn chức năng còn thiếu phần **sửa**; tầng dữ liệu v
 
 Ngoài ra:
 
-- Chưa tích hợp với backend thật — xem [`../docs/integration-log.md`](../docs/integration-log.md)
-  để biết 7 sai lệch hợp đồng đã phát hiện và 4 câu hỏi cần backend trả lời.
+- **Đã tích hợp xong với backend thật** (giai đoạn 1): cả 8 luồng nghiệm thu đều đạt trên
+  dữ liệu thật. Xem [`../docs/integration-log.md`](../docs/integration-log.md) để biết 8 sai
+  lệch hợp đồng đã xử lý và 4 câu hỏi còn chờ backend trả lời.
+- Ảnh `docs/screenshots/trang-chu.png` đang trống vì chụp trúng lúc dữ liệu đang tải —
+  lỗi đã biết của khâu chụp ảnh, không phải lỗi chức năng.
 - Giỏ hàng POS không lưu lại khi đóng tab; giá do máy chủ chốt lúc thanh toán.
 - Không có hủy/hoàn hóa đơn, không quản lý lô và hạn sử dụng, không bán hàng cân lẻ —
   đều nằm ngoài phạm vi phiên bản đầu theo SRS.
